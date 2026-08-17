@@ -13,6 +13,8 @@
             --thick-border-color: #222222;
             --cell-selected: #e3f2fd;
             --cell-highlight: #f1f8e9;
+            --cell-given: #111111;
+            --cell-user: #2563eb;
             --primary-btn: #3b82f6;
             --primary-btn-hover: #2563eb;
             --btn-text: #ffffff;
@@ -26,6 +28,8 @@
             --thick-border-color: #888888;
             --cell-selected: #1e3a8a;
             --cell-highlight: #14532d;
+            --cell-given: #ffffff;
+            --cell-user: #60a5fa;
             --primary-btn: #2563eb;
             --primary-btn-hover: #1d4ed8;
             --btn-text: #ffffff;
@@ -69,7 +73,12 @@
             margin: 0;
         }
 
-        .theme-toggle {
+        .controls-top {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary {
             background: none;
             border: 1px solid var(--border-color);
             color: var(--text-color);
@@ -77,6 +86,10 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.9rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
         }
 
         .game-info {
@@ -120,7 +133,20 @@
         .cell:nth-child(9n) {
             border-right: none;
         }
-        /* Row breaks for 3x3 boxes can be managed via grid spacing or explicit nth-child styling if needed */
+        /* Make every 3rd row have a thicker bottom border */
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid var(--thick-border-color);
+        }
+
+        .cell.given {
+            color: var(--cell-given);
+            font-weight: 700;
+        }
+
+        .cell.user-filled {
+            color: var(--cell-user);
+        }
 
         .cell.highlight {
             background-color: var(--cell-highlight);
@@ -166,7 +192,10 @@
     <div class="container">
         <header>
             <h1>Sudoku</h1>
-            <button class="theme-toggle" id="themeToggleBtn">🌙 Dark Mode</button>
+            <div class="controls-top">
+                <button class="btn-secondary" id="newGameBtn">New Game</button>
+                <button class="btn-secondary" id="themeToggleBtn">🌙</button>
+            </div>
         </header>
 
         <div class="game-info">
@@ -182,7 +211,10 @@
     </div>
 
     <script>
-        // Basic Theme Toggle Logic
+        // Configuration
+        
+
+        // Theme Toggle Logic
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const htmlElement = document.documentElement;
 
@@ -190,26 +222,153 @@
             const currentTheme = htmlElement.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             htmlElement.setAttribute('data-theme', newTheme);
-            themeToggleBtn.textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+            themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         });
 
-        // Generate 81 cells for the board skeleton
+        // Game State Variables
+        let boardData = []; // 81 flat array representation
+        let solutionData = [];
+        let selectedCellIndex = null;
+        let timerSeconds = 0;
+        let timerInterval = null;
+
         const boardElement = document.getElementById('sudokuBoard');
+        const numberPadElement = document.getElementById('numberPad');
+        const timerDisplay = document.getElementById('timerDisplay');
+
+        // Initialize Grid DOM Elements
         for (let i = 0; i < 81; i++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
             cell.dataset.index = i;
+            cell.addEventListener('click', () => selectCell(i));
             boardElement.appendChild(cell);
         }
 
-        // Generate Number Pad 1-9
-        const numberPadElement = document.getElementById('numberPad');
+        // Initialize Number Pad 1-9
         for (let i = 1; i <= 9; i++) {
             const btn = document.createElement('button');
             btn.classList.add('num-btn');
             btn.textContent = i;
+            btn.addEventListener('click', () => handleNumberInput(i));
             numberPadElement.appendChild(btn);
         }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerSeconds = 0;
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+                const secs = String(timerSeconds % 60).padStart(2, '0');
+                timerDisplay.textContent = `Time: ${mins}:${secs}`;
+            }, 1000);
+        }
+
+        async function fetchNewPuzzle(difficulty = 'medium') {
+    timerDisplay.textContent = "Loading puzzle...";
+    try {
+        // Call your own Vercel serverless function instead of API Ninjas directly
+        const response = await fetch(`/api/puzzle?difficulty=${difficulty}`);
+        const data = await response.json();
+        
+        if (data.puzzle && data.solution) {
+            boardData = data.puzzle.flat().map(val => val === null ? 0 : val);
+            solutionData = data.solution.flat();
+            renderBoard();
+            startTimer();
+        } else {
+            alert(data.error || "Error loading puzzle.");
+            loadMockPuzzle(); // Fallback if something goes wrong
+        }
+    } catch (error) {
+        console.error("Fetch error:", error);
+        loadMockPuzzle();
+    }
+
+            timerDisplay.textContent = "Loading puzzle...";
+            try {
+                const response = await fetch(`https://api.api-ninjas.com/v1/sudokugenerate?difficulty=${difficulty}`, {
+                    headers: { 'X-Api-Key': API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.puzzle && data.solution) {
+                    // Flatten 2D puzzle array (null means empty) into 1D
+                    boardData = data.puzzle.flat().map(val => val === null ? 0 : val);
+                    solutionData = data.solution.flat();
+                    renderBoard();
+                    startTimer();
+                } else {
+                    alert("Error loading puzzle from API.");
+                }
+            } catch (error) {
+                console.error("API fetch error:", error);
+                // Fallback mock puzzle if API key isn't set yet so you can test layout
+                loadMockPuzzle();
+            }
+        }
+
+        function loadMockPuzzle() {
+            // Fallback sample puzzle if no API key is set yet
+            boardData = [
+                5,3,0,0,7,0,0,0,0,
+                6,0,0,1,9,5,0,0,0,
+                0,9,8,0,0,0,0,6,0,
+                8,0,0,0,6,0,0,0,3,
+                4,0,0,8,0,3,0,0,1,
+                7,0,0,0,2,0,0,0,6,
+                0,6,0,0,0,0,2,8,0,
+                0,0,0,4,1,9,0,0,5,
+                0,0,0,0,8,0,0,7,9
+            ];
+            solutionData = boardData.slice(); // placeholder
+            renderBoard();
+            startTimer();
+        }
+
+        function renderBoard() {
+            const cells = boardElement.children;
+            for (let i = 0; i < 81; i++) {
+                const cell = cells[i];
+                const val = boardData[i];
+                cell.textContent = val !== 0 ? val : '';
+                
+                // Add styling class for preset numbers vs empty
+                if (val !== 0) {
+                    cell.classList.add('given');
+                } else {
+                    cell.classList.remove('given');
+                }
+            }
+        }
+
+        function selectCell(index) {
+            const cells = boardElement.children;
+            if (selectedCellIndex !== null) {
+                cells[selectedCellIndex].classList.remove('selected');
+            }
+            selectedCellIndex = index;
+            cells[index].classList.add('selected');
+        }
+
+        function handleNumberInput(num) {
+            if (selectedCellIndex === null) return;
+            // Prevent changing preset 'given' cells
+            if (boardData[selectedCellIndex] !== 0 && boardElement.children[selectedCellIndex].classList.contains('given')) {
+                return;
+            }
+            boardData[selectedCellIndex] = num;
+            const cell = boardElement.children[selectedCellIndex];
+            cell.textContent = num;
+            cell.classList.add('user-filled');
+        }
+
+        // Hook up New Game button
+        document.getElementById('newGameBtn').addEventListener('click', () => fetchNewPuzzle('medium'));
+
+        // Initial load (will try API, fallback to mock if key is default)
+        fetchNewPuzzle('medium');
     </script>
 </body>
 </html>

@@ -211,9 +211,6 @@
     </div>
 
     <script>
-        // Configuration
-        
-
         // Theme Toggle Logic
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const htmlElement = document.documentElement;
@@ -266,51 +263,29 @@
         }
 
         async function fetchNewPuzzle(difficulty = 'medium') {
-    timerDisplay.textContent = "Loading puzzle...";
-    try {
-        // Call your own Vercel serverless function instead of API Ninjas directly
-        const response = await fetch(`/api/puzzle?difficulty=${difficulty}`);
-        const data = await response.json();
-        
-        if (data.puzzle && data.solution) {
-            boardData = data.puzzle.flat().map(val => val === null ? 0 : val);
-            solutionData = data.solution.flat();
-            renderBoard();
-            startTimer();
-        } else {
-            alert(data.error || "Error loading puzzle.");
-            loadMockPuzzle(); // Fallback if something goes wrong
-        }
-    } catch (error) {
-        console.error("Fetch error:", error);
-        loadMockPuzzle();
-    }
-
             timerDisplay.textContent = "Loading puzzle...";
             try {
-                const response = await fetch(`https://api.api-ninjas.com/v1/sudokugenerate?difficulty=${difficulty}`, {
-                    headers: { 'X-Api-Key': API_KEY }
-                });
+                // Secure serverless call to /api/puzzle
+                const response = await fetch(`/api/puzzle?difficulty=${difficulty}`);
                 const data = await response.json();
                 
                 if (data.puzzle && data.solution) {
-                    // Flatten 2D puzzle array (null means empty) into 1D
                     boardData = data.puzzle.flat().map(val => val === null ? 0 : val);
                     solutionData = data.solution.flat();
                     renderBoard();
                     startTimer();
                 } else {
-                    alert("Error loading puzzle from API.");
+                    console.warn(data.error || "API error, falling back to mock puzzle.");
+                    loadMockPuzzle();
                 }
             } catch (error) {
-                console.error("API fetch error:", error);
-                // Fallback mock puzzle if API key isn't set yet so you can test layout
+                console.error("Fetch error (likely testing locally without serverless function):", error);
                 loadMockPuzzle();
             }
         }
 
         function loadMockPuzzle() {
-            // Fallback sample puzzle if no API key is set yet
+            // Fallback sample puzzle for local testing
             boardData = [
                 5,3,0,0,7,0,0,0,0,
                 6,0,0,1,9,5,0,0,0,
@@ -322,7 +297,7 @@
                 0,0,0,4,1,9,0,0,5,
                 0,0,0,0,8,0,0,7,9
             ];
-            solutionData = boardData.slice(); // placeholder
+            solutionData = boardData.slice();
             renderBoard();
             startTimer();
         }
@@ -330,11 +305,10 @@
         function renderBoard() {
             const cells = boardElement.children;
             for (let i = 0; i < 81; i++) {
-                const cell = cells[i];
+                const cell =cells[i];
                 const val = boardData[i];
                 cell.textContent = val !== 0 ? val : '';
                 
-                // Add styling class for preset numbers vs empty
                 if (val !== 0) {
                     cell.classList.add('given');
                 } else {
@@ -354,7 +328,6 @@
 
         function handleNumberInput(num) {
             if (selectedCellIndex === null) return;
-            // Prevent changing preset 'given' cells
             if (boardData[selectedCellIndex] !== 0 && boardElement.children[selectedCellIndex].classList.contains('given')) {
                 return;
             }
@@ -364,10 +337,9 @@
             cell.classList.add('user-filled');
         }
 
-        // Hook up New Game button
         document.getElementById('newGameBtn').addEventListener('click', () => fetchNewPuzzle('medium'));
 
-        // Initial load (will try API, fallback to mock if key is default)
+        // Initial load
         fetchNewPuzzle('medium');
     </script>
 </body>

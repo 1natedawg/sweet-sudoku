@@ -82,9 +82,10 @@
         .controls-top {
             display: flex;
             gap: 8px;
+            align-items: center;
         }
 
-        .btn-secondary {
+        .btn-secondary, select.btn-secondary {
             background: none;
             border: 1px solid var(--border-color);
             color: var(--text-color);
@@ -92,6 +93,7 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.85rem;
+            background-color: var(--card-bg);
         }
 
         .btn-secondary:hover {
@@ -288,6 +290,12 @@
         <header>
             <h1>Sudoku</h1>
             <div class="controls-top">
+                <select id="difficultySelect" class="btn-secondary">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                    <option value="expert">Expert</option>
+                </select>
                 <button class="btn-secondary" id="newGameBtn">New Game</button>
                 <button class="btn-secondary" id="themeToggleBtn">🌙</button>
             </div>
@@ -326,6 +334,7 @@
         const modeToggleBtn = document.getElementById('modeToggleBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
+        const difficultySelect = document.getElementById('difficultySelect');
         const htmlElement = document.documentElement;
 
         themeToggleBtn.addEventListener('click', () => {
@@ -445,6 +454,7 @@
 
         async function fetchNewPuzzle(difficulty = 'medium') {
             currentDifficulty = difficulty;
+            difficultySelect.value = difficulty;
             difficultyDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
             timerDisplay.textContent = "Loading puzzle...";
             isGameWon = false;
@@ -501,7 +511,6 @@
                 const val = boardData[i];
                 cell.innerHTML = '';
 
-                // Reset specific text styling classes
                 cell.classList.remove('given', 'user-correct', 'user-error');
 
                 if (val !== 0) {
@@ -509,7 +518,6 @@
                     if (givensMask[i]) {
                         cell.classList.add('given');
                     } else {
-                        // Auto-validation check for user-filled cells
                         if (solutionData[i] && solutionData[i] !== 0) {
                             if (val === solutionData[i]) {
                                 cell.classList.add('user-correct');
@@ -674,6 +682,7 @@
                 notesData = state.notesData.map(arr => new Set(arr));
                 solutionData = state.solutionData;
                 currentDifficulty = state.currentDifficulty || 'medium';
+                difficultySelect.value = currentDifficulty;
                 difficultyDisplay.textContent = `Difficulty: ${currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}`;
                 renderBoard();
                 startTimer(state.timerSeconds || 0);
@@ -710,7 +719,8 @@
 
         document.getElementById('newGameBtn').addEventListener('click', () => {
             if (confirm("Start a new game? Current progress will be reset.")) {
-                fetchNewPuzzle('medium');
+                const selectedDiff = difficultySelect.value;
+                fetchNewPuzzle(selectedDiff);
             }
         });
 

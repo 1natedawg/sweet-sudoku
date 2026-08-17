@@ -651,7 +651,6 @@
                         const notesContainer = document.createElement('div');
                         notesContainer.classList.add('cell-notes');
                         
-                        // Check if we need to highlight any notes in this cell based on selection
                         const selectedVal = selectedCellIndex !== null ? boardData[selectedCellIndex] : null;
                         
                         for (let n = 1; n <= 9; n++) {
@@ -726,20 +725,16 @@
                 const br = Math.floor(r / 3);
                 const bc = Math.floor(c / 3);
 
-                // Row, Column, or Box highlight
                 if (r === row || c === col || (br === boxRow && bc === boxCol)) {
                     cells[i].classList.add('highlight');
                 }
 
-                // Same number highlight
                 if (settings.highlightSameNum && selectedVal !== 0 && boardData[i] === selectedVal) {
                     cells[i].classList.add('same-num');
                 }
             }
 
-            // Re-render board to update matching note highlights if enabled
             renderBoard();
-            // Re-apply selection and highlights after full render scrub
             cells[index].classList.add('selected');
             for (let i = 0; i < 81; i++) {
                 if (i === index) continue;
@@ -781,6 +776,25 @@
                 } else {
                     boardData[index] = num;
                     notesData[index].clear();
+
+                    // Automatically remove matching notes from impacted row, column, and box
+                    const row = Math.floor(index / 9);
+                    const col = index % 9;
+                    const boxRow = Math.floor(row / 3);
+                    const boxCol = Math.floor(col / 3);
+
+                    for (let i = 0; i < 81; i++) {
+                        const r = Math.floor(i / 9);
+                        const c = i % 9;
+                        const br = Math.floor(r / 3);
+                        const bc = Math.floor(c / 3);
+
+                        if (r === row || c === col || (br === boxRow && bc === boxCol)) {
+                            if (boardData[i] === 0 && notesData[i].has(num)) {
+                                notesData[i].delete(num);
+                            }
+                        }
+                    }
                 }
             } else {
                 if (boardData[index] !== 0) return;

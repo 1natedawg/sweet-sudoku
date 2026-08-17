@@ -13,6 +13,7 @@
             --thick-border-color: #222222;
             --cell-selected: #e3f2fd;
             --cell-highlight: #f1f8e9;
+            --cell-same-num: #dbeafe;
             --cell-given: #111111;
             --cell-user: #2563eb;
             --cell-correct: #16a34a;
@@ -21,6 +22,7 @@
             --primary-btn-hover: #2563eb;
             --btn-text: #ffffff;
             --active-sticky: #93c5fd;
+            --note-highlight-color: #2563eb;
         }
 
         [data-theme="dark"] {
@@ -31,6 +33,7 @@
             --thick-border-color: #888888;
             --cell-selected: #1e3a8a;
             --cell-highlight: #14532d;
+            --cell-same-num: #1e293b;
             --cell-given: #ffffff;
             --cell-user: #60a5fa;
             --cell-correct: #4ade80;
@@ -39,6 +42,7 @@
             --primary-btn-hover: #1d4ed8;
             --btn-text: #ffffff;
             --active-sticky: #1d4ed8;
+            --note-highlight-color: #60a5fa;
         }
 
         body {
@@ -81,7 +85,7 @@
 
         .controls-top {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
         }
 
@@ -191,8 +195,14 @@
             background-color: var(--cell-highlight);
         }
 
+        .cell.same-num {
+            background-color: var(--cell-same-num);
+        }
+
         .cell.selected {
             background-color: var(--cell-selected);
+            outline: 2px solid var(--primary-btn);
+            z-index: 2;
         }
 
         /* Mini-grid for Notes */
@@ -216,6 +226,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .note-item.highlight-note {
+            color: var(--note-highlight-color);
+            font-weight: 800;
+            opacity: 1;
         }
 
         /* Number Pad Styling */
@@ -253,6 +269,63 @@
             background-color: var(--border-color);
             opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        /* Options Modal Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            padding: 24px;
+            border-radius: 12px;
+            width: 320px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .modal-close-btn {
+            margin-top: 16px;
+            width: 100%;
+            background-color: var(--primary-btn);
+            color: var(--btn-text);
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
         }
 
         /* History Log Panel */
@@ -296,6 +369,7 @@
                     <option value="hard">Hard</option>
                     <option value="expert">Expert</option>
                 </select>
+                <button class="btn-secondary" id="optionsBtn" title="Options">⚙️</button>
                 <button class="btn-secondary" id="newGameBtn">New Game</button>
                 <button class="btn-secondary" id="themeToggleBtn">🌙</button>
             </div>
@@ -329,13 +403,59 @@
         </div>
     </div>
 
+    <!-- Options Modal -->
+    <div class="modal-overlay" id="optionsModal">
+        <div class="modal-content">
+            <h2>Game Options</h2>
+            <div class="setting-item">
+                <label for="toggleSameNum">Highlight Same Numbers</label>
+                <input type="checkbox" id="toggleSameNum" checked>
+            </div>
+            <div class="setting-item">
+                <label for="toggleNoteHighlight">Highlight Matching Notes</label>
+                <input type="checkbox" id="toggleNoteHighlight" checked>
+            </div>
+            <button class="modal-close-btn" id="closeModalBtn">Save & Close</button>
+        </div>
+    </div>
+
     <script>
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const modeToggleBtn = document.getElementById('modeToggleBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
         const difficultySelect = document.getElementById('difficultySelect');
+        const optionsBtn = document.getElementById('optionsBtn');
+        const optionsModal = document.getElementById('optionsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const toggleSameNum = document.getElementById('toggleSameNum');
+        const toggleNoteHighlight = document.getElementById('toggleNoteHighlight');
         const htmlElement = document.documentElement;
+
+        // Settings State
+        let settings = {
+            highlightSameNum: true,
+            highlightNotes: true
+        };
+
+        // Load saved settings
+        const savedSettings = localStorage.getItem('sudoku_settings');
+        if (savedSettings) {
+            try {
+                settings = JSON.parse(savedSettings);
+                toggleSameNum.checked = settings.highlightSameNum;
+                toggleNoteHighlight.checked = settings.highlightNotes;
+            } catch (e) {}
+        }
+
+        optionsBtn.addEventListener('click', () => optionsModal.classList.add('open'));
+        closeModalBtn.addEventListener('click', () => {
+            settings.highlightSameNum = toggleSameNum.checked;
+            settings.highlightNotes = toggleNoteHighlight.checked;
+            localStorage.setItem('sudoku_settings', JSON.stringify(settings));
+            optionsModal.classList.remove('open');
+            if (selectedCellIndex !== null) selectCellPath(selectedCellIndex);
+        });
 
         themeToggleBtn.addEventListener('click', () => {
             const currentTheme = htmlElement.getAttribute('data-theme');
@@ -530,11 +650,18 @@
                     if (notesData[i].size > 0) {
                         const notesContainer = document.createElement('div');
                         notesContainer.classList.add('cell-notes');
+                        
+                        // Check if we need to highlight any notes in this cell based on selection
+                        const selectedVal = selectedCellIndex !== null ? boardData[selectedCellIndex] : null;
+                        
                         for (let n = 1; n <= 9; n++) {
                             const noteItem = document.createElement('div');
                             noteItem.classList.add('note-item');
                             if (notesData[i].has(n)) {
                                 noteItem.textContent = n;
+                                if (settings.highlightNotes && selectedVal !== null && n === selectedVal) {
+                                    noteItem.classList.add('highlight-note');
+                                }
                             }
                             notesContainer.appendChild(noteItem);
                         }
@@ -580,7 +707,7 @@
         function selectCellPath(index) {
             const cells = boardElement.children;
             for (let i = 0; i < 81; i++) {
-                cells[i].classList.remove('selected', 'highlight');
+                cells[i].classList.remove('selected', 'highlight', 'same-num');
             }
             
             selectedCellIndex = index;
@@ -590,6 +717,7 @@
             const col = index % 9;
             const boxRow = Math.floor(row / 3);
             const boxCol = Math.floor(col / 3);
+            const selectedVal = boardData[index];
 
             for (let i = 0; i < 81; i++) {
                 if (i === index) continue;
@@ -598,8 +726,32 @@
                 const br = Math.floor(r / 3);
                 const bc = Math.floor(c / 3);
 
+                // Row, Column, or Box highlight
                 if (r === row || c === col || (br === boxRow && bc === boxCol)) {
                     cells[i].classList.add('highlight');
+                }
+
+                // Same number highlight
+                if (settings.highlightSameNum && selectedVal !== 0 && boardData[i] === selectedVal) {
+                    cells[i].classList.add('same-num');
+                }
+            }
+
+            // Re-render board to update matching note highlights if enabled
+            renderBoard();
+            // Re-apply selection and highlights after full render scrub
+            cells[index].classList.add('selected');
+            for (let i = 0; i < 81; i++) {
+                if (i === index) continue;
+                const r = Math.floor(i / 9);
+                const c = i % 9;
+                const br = Math.floor(r / 3);
+                const bc = Math.floor(c / 3);
+                if (r === row || c === col || (br === boxRow && bc === boxCol)) {
+                    cells[i].classList.add('highlight');
+                }
+                if (settings.highlightSameNum && selectedVal !== 0 && boardData[i] === selectedVal) {
+                    cells[i].classList.add('same-num');
                 }
             }
         }

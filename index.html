@@ -15,9 +15,12 @@
             --cell-highlight: #f1f8e9;
             --cell-given: #111111;
             --cell-user: #2563eb;
+            --cell-correct: #16a34a;
+            --cell-error: #dc2626;
             --primary-btn: #3b82f6;
             --primary-btn-hover: #2563eb;
             --btn-text: #ffffff;
+            --active-sticky: #93c5fd;
         }
 
         [data-theme="dark"] {
@@ -30,9 +33,12 @@
             --cell-highlight: #14532d;
             --cell-given: #ffffff;
             --cell-user: #60a5fa;
+            --cell-correct: #4ade80;
+            --cell-error: #f87171;
             --primary-btn: #2563eb;
             --primary-btn-hover: #1d4ed8;
             --btn-text: #ffffff;
+            --active-sticky: #1d4ed8;
         }
 
         body {
@@ -65,7 +71,7 @@
             justify-content: space-between;
             width: 100%;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         h1 {
@@ -75,21 +81,50 @@
 
         .controls-top {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .btn-secondary {
             background: none;
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            padding: 6px 12px;
+            padding: 6px 10px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         .btn-secondary:hover {
             background-color: var(--border-color);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .mode-toggle {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .mode-toggle.note-active {
+            background-color: #f59e0b;
+            color: #ffffff;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 6px;
         }
 
         .game-info {
@@ -126,14 +161,12 @@
             position: relative;
         }
 
-        /* Thicker borders for 3x3 sub-grids */
         .cell:nth-child(3n) {
             border-right: 2px solid var(--thick-border-color);
         }
         .cell:nth-child(9n) {
             border-right: none;
         }
-        /* Make every 3rd row have a thicker bottom border */
         .cell:nth-child(n+19):nth-child(-n+27),
         .cell:nth-child(n+46):nth-child(-n+54) {
             border-bottom: 2px solid var(--thick-border-color);
@@ -144,8 +177,12 @@
             font-weight: 700;
         }
 
-        .cell.user-filled {
-            color: var(--cell-user);
+        .cell.user-correct {
+            color: var(--cell-correct);
+        }
+
+        .cell.user-error {
+            color: var(--cell-error);
         }
 
         .cell.highlight {
@@ -156,12 +193,36 @@
             background-color: var(--cell-selected);
         }
 
+        /* Mini-grid for Notes */
+        .cell-notes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .note-item {
+            font-size: 0.55rem;
+            font-weight: 500;
+            color: var(--text-color);
+            opacity: 0.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Number Pad Styling */
         .number-pad {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             gap: 6px;
             width: 100%;
+            margin-bottom: 15px;
         }
 
         .num-btn {
@@ -180,10 +241,44 @@
             background-color: var(--primary-btn-hover);
         }
 
+        .num-btn.active-sticky {
+            outline: 3px solid #1e40af;
+            background-color: var(--active-sticky);
+            color: #111111;
+        }
+
         .num-btn:disabled {
             background-color: var(--border-color);
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        /* History Log Panel */
+        .history-section {
+            width: 100%;
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+            font-size: 0.85rem;
+        }
+
+        .history-section h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+        }
+
+        .history-list {
+            max-height: 90px;
+            overflow-y: auto;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--border-color);
         }
     </style>
 </head>
@@ -198,6 +293,14 @@
             </div>
         </header>
 
+        <div class="toolbar">
+            <button class="mode-toggle" id="modeToggleBtn">Mode: Fill</button>
+            <div class="action-group">
+                <button class="btn-secondary" id="undoBtn">↩️ Undo</button>
+                <button class="btn-secondary" id="redoBtn">↪️ Redo</button>
+            </div>
+        </div>
+
         <div class="game-info">
             <span id="difficultyDisplay">Difficulty: Medium</span>
             <span id="timerDisplay">Time: 00:00</span>
@@ -208,11 +311,21 @@
 
         <!-- Number Pad -->
         <div class="number-pad" id="numberPad"></div>
+
+        <!-- History Section -->
+        <div class="history-section">
+            <h3>Completed Games History</h3>
+            <ul class="history-list" id="historyList">
+                <li style="color: var(--border-color); font-style: italic;">No completed games yet.</li>
+            </ul>
+        </div>
     </div>
 
     <script>
-        // Theme Toggle Logic
         const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const modeToggleBtn = document.getElementById('modeToggleBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
         const htmlElement = document.documentElement;
 
         themeToggleBtn.addEventListener('click', () => {
@@ -223,70 +336,145 @@
         });
 
         // Game State Variables
-        let boardData = []; // 81 flat array representation
-        let solutionData = [];
+        let boardData = Array(81).fill(0);
+        let givensMask = Array(81).fill(false);
+        let notesData = Array(81).fill(null).map(() => new Set());
+        let solutionData = Array(81).fill(0);
+        let currentDifficulty = 'medium';
         let selectedCellIndex = null;
+        let activeStickyNumber = null;
+        let inputMode = 'fill';
         let timerSeconds = 0;
         let timerInterval = null;
+        let isGameWon = false;
+
+        let undoStack = [];
+        let redoStack = [];
 
         const boardElement = document.getElementById('sudokuBoard');
         const numberPadElement = document.getElementById('numberPad');
         const timerDisplay = document.getElementById('timerDisplay');
+        const difficultyDisplay = document.getElementById('difficultyDisplay');
+        const historyListElement = document.getElementById('historyList');
 
-        // Initialize Grid DOM Elements
+        modeToggleBtn.addEventListener('click', () => {
+            inputMode = inputMode === 'fill' ? 'note' : 'fill';
+            if (inputMode === 'note') {
+                modeToggleBtn.textContent = "Mode: Notes ✏️";
+                modeToggleBtn.classList.add('note-active');
+            } else {
+                modeToggleBtn.textContent = "Mode: Fill 🔢";
+                modeToggleBtn.classList.remove('note-active');
+            }
+        });
+
         for (let i = 0; i < 81; i++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
             cell.dataset.index = i;
-            cell.addEventListener('click', () => selectCell(i));
+            cell.addEventListener('click', () => handleCellClick(i));
             boardElement.appendChild(cell);
         }
 
-        // Initialize Number Pad 1-9
         for (let i = 1; i <= 9; i++) {
             const btn = document.createElement('button');
             btn.classList.add('num-btn');
+            btn.dataset.num = i;
             btn.textContent = i;
-            btn.addEventListener('click', () => handleNumberInput(i));
+            btn.addEventListener('click', () => handleNumberPadClick(i));
             numberPadElement.appendChild(btn);
         }
 
-        function startTimer() {
+        function startTimer(seconds = 0) {
             clearInterval(timerInterval);
-            timerSeconds = 0;
+            timerSeconds = seconds;
+            updateTimerDisplay();
             timerInterval = setInterval(() => {
-                timerSeconds++;
-                const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
-                const secs = String(timerSeconds % 60).padStart(2, '0');
-                timerDisplay.textContent = `Time: ${mins}:${secs}`;
+                if (!isGameWon) {
+                    timerSeconds++;
+                    updateTimerDisplay();
+                    saveActiveGame();
+                }
             }, 1000);
         }
 
+        function updateTimerDisplay() {
+            const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+            const secs = String(timerSeconds % 60).padStart(2, '0');
+            timerDisplay.textContent = `Time: ${mins}:${secs}`;
+        }
+
+        function saveStateSnapshot() {
+            const snapshot = {
+                board: [...boardData],
+                notes: notesData.map(set => [...set])
+            };
+            undoStack.push(snapshot);
+            redoStack = [];
+        }
+
+        undoBtn.addEventListener('click', () => {
+            if (undoStack.length === 0 || isGameWon) return;
+            const currentSnapshot = {
+                board: [...boardData],
+                notes: notesData.map(set => [...set])
+            };
+            redoStack.push(currentSnapshot);
+
+            const prevSnapshot = undoStack.pop();
+            boardData = [...prevSnapshot.board];
+            notesData = prevSnapshot.notes.map(arr => new Set(arr));
+            renderBoard();
+            saveActiveGame();
+        });
+
+        redoBtn.addEventListener('click', () => {
+            if (redoStack.length === 0 || isGameWon) return;
+            const currentSnapshot = {
+                board: [...boardData],
+                notes: notesData.map(set => [...set])
+            };
+            undoStack.push(currentSnapshot);
+
+            const nextSnapshot = redoStack.pop();
+            boardData = [...nextSnapshot.board];
+            notesData = nextSnapshot.notes.map(arr => new Set(arr));
+            renderBoard();
+            saveActiveGame();
+        });
+
         async function fetchNewPuzzle(difficulty = 'medium') {
+            currentDifficulty = difficulty;
+            difficultyDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
             timerDisplay.textContent = "Loading puzzle...";
+            isGameWon = false;
+            undoStack = [];
+            redoStack = [];
+            activeStickyNumber = null;
+
             try {
-                // Secure serverless call to /api/puzzle
                 const response = await fetch(`/api/puzzle?difficulty=${difficulty}`);
                 const data = await response.json();
                 
                 if (data.puzzle && data.solution) {
-                    boardData = data.puzzle.flat().map(val => val === null ? 0 : val);
+                    const rawPuzzle = data.puzzle.flat().map(val => val === null ? 0 : val);
+                    boardData = [...rawPuzzle];
+                    givensMask = rawPuzzle.map(val => val !== 0);
                     solutionData = data.solution.flat();
+                    notesData = Array(81).fill(null).map(() => new Set());
                     renderBoard();
-                    startTimer();
+                    startTimer(0);
+                    saveActiveGame();
                 } else {
-                    console.warn(data.error || "API error, falling back to mock puzzle.");
                     loadMockPuzzle();
                 }
             } catch (error) {
-                console.error("Fetch error (likely testing locally without serverless function):", error);
                 loadMockPuzzle();
             }
         }
 
         function loadMockPuzzle() {
-            // Fallback sample puzzle for local testing
-            boardData = [
+            const mock = [
                 5,3,0,0,7,0,0,0,0,
                 6,0,0,1,9,5,0,0,0,
                 0,9,8,0,0,0,0,6,0,
@@ -297,50 +485,239 @@
                 0,0,0,4,1,9,0,0,5,
                 0,0,0,0,8,0,0,7,9
             ];
-            solutionData = boardData.slice();
+            boardData = [...mock];
+            givensMask = mock.map(val => val !== 0);
+            solutionData = [...mock];
+            notesData = Array(81).fill(null).map(() => new Set());
             renderBoard();
-            startTimer();
+            startTimer(0);
+            saveActiveGame();
         }
 
         function renderBoard() {
             const cells = boardElement.children;
             for (let i = 0; i < 81; i++) {
-                const cell =cells[i];
+                const cell = cells[i];
                 const val = boardData[i];
-                cell.textContent = val !== 0 ? val : '';
-                
+                cell.innerHTML = '';
+
+                // Reset specific text styling classes
+                cell.classList.remove('given', 'user-correct', 'user-error');
+
                 if (val !== 0) {
-                    cell.classList.add('given');
+                    cell.textContent = val;
+                    if (givensMask[i]) {
+                        cell.classList.add('given');
+                    } else {
+                        // Auto-validation check for user-filled cells
+                        if (solutionData[i] && solutionData[i] !== 0) {
+                            if (val === solutionData[i]) {
+                                cell.classList.add('user-correct');
+                            } else {
+                                cell.classList.add('user-error');
+                            }
+                        }
+                    }
                 } else {
-                    cell.classList.remove('given');
+                    if (notesData[i].size > 0) {
+                        const notesContainer = document.createElement('div');
+                        notesContainer.classList.add('cell-notes');
+                        for (let n = 1; n <= 9; n++) {
+                            const noteItem = document.createElement('div');
+                            noteItem.classList.add('note-item');
+                            if (notesData[i].has(n)) {
+                                noteItem.textContent = n;
+                            }
+                            notesContainer.appendChild(noteItem);
+                        }
+                        cell.appendChild(notesContainer);
+                    }
+                }
+            }
+            updateNumberPadUI();
+            checkWinCondition();
+        }
+
+        function updateNumberPadUI() {
+            const counts = Array(10).fill(0);
+            for (let val of boardData) {
+                if (val >= 1 && val <= 9) counts[val]++;
+            }
+
+            for (let btn of numberPadElement.children) {
+                const num = parseInt(btn.dataset.num);
+                if (activeStickyNumber === num) {
+                    btn.classList.add('active-sticky');
+                } else {
+                    btn.classList.remove('active-sticky');
+                }
+
+                if (counts[num] >= 9) {
+                    btn.disabled = true;
+                    if (activeStickyNumber === num) activeStickyNumber = null;
+                } else {
+                    btn.disabled = false;
                 }
             }
         }
 
-        function selectCell(index) {
-            const cells = boardElement.children;
-            if (selectedCellIndex !== null) {
-                cells[selectedCellIndex].classList.remove('selected');
+        function handleCellClick(index) {
+            if (isGameWon) return;
+            selectCellPath(index);
+            if (activeStickyNumber !== null) {
+                applyNumberToCell(index, activeStickyNumber);
             }
+        }
+
+        function selectCellPath(index) {
+            const cells = boardElement.children;
+            for (let i = 0; i < 81; i++) {
+                cells[i].classList.remove('selected', 'highlight');
+            }
+            
             selectedCellIndex = index;
             cells[index].classList.add('selected');
+
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            const boxRow = Math.floor(row / 3);
+            const boxCol = Math.floor(col / 3);
+
+            for (let i = 0; i < 81; i++) {
+                if (i === index) continue;
+                const r = Math.floor(i / 9);
+                const c = i % 9;
+                const br = Math.floor(r / 3);
+                const bc = Math.floor(c / 3);
+
+                if (r === row || c === col || (br === boxRow && bc === boxCol)) {
+                    cells[i].classList.add('highlight');
+                }
+            }
         }
 
-        function handleNumberInput(num) {
-            if (selectedCellIndex === null) return;
-            if (boardData[selectedCellIndex] !== 0 && boardElement.children[selectedCellIndex].classList.contains('given')) {
+        function handleNumberPadClick(num) {
+            if (isGameWon) return;
+            if (activeStickyNumber === num) {
+                activeStickyNumber = null;
+            } else {
+                activeStickyNumber = num;
+            }
+            updateNumberPadUI();
+
+            if (selectedCellIndex !== null && activeStickyNumber !== null) {
+                applyNumberToCell(selectedCellIndex, activeStickyNumber);
+            }
+        }
+
+        function applyNumberToCell(index, num) {
+            if (givensMask[index]) return;
+
+            saveStateSnapshot();
+
+            if (inputMode === 'fill') {
+                if (boardData[index] === num) {
+                    boardData[index] = 0;
+                } else {
+                    boardData[index] = num;
+                    notesData[index].clear();
+                }
+            } else {
+                if (boardData[index] !== 0) return;
+                if (notesData[index].has(num)) {
+                    notesData[index].delete(num);
+                } else {
+                    notesData[index].add(num);
+                }
+            }
+
+            renderBoard();
+            if (selectedCellIndex !== null) selectCellPath(selectedCellIndex);
+            saveActiveGame();
+        }
+
+        function checkWinCondition() {
+            if (isGameWon) return;
+            const isFull = boardData.every(val => val !== 0);
+            if (!isFull) return;
+
+            const matches = boardData.every((val, i) => val === solutionData[i]);
+            if (matches) {
+                isGameWon = true;
+                clearInterval(timerInterval);
+                recordGameHistory();
+                localStorage.removeItem('sudoku_active_game');
+                alert(`🎉 Puzzle Completed Successfully in ${timerDisplay.textContent.replace('Time: ', '')}!`);
+            }
+        }
+
+        function saveActiveGame() {
+            if (isGameWon) return;
+            const gameState = {
+                boardData,
+                givensMask,
+                notesData: notesData.map(set => [...set]),
+                solutionData,
+                currentDifficulty,
+                timerSeconds
+            };
+            localStorage.setItem('sudoku_active_game', JSON.stringify(gameState));
+        }
+
+        function loadActiveGame() {
+            const saved = localStorage.getItem('sudoku_active_game');
+            if (!saved) return false;
+            try {
+                const state = JSON.parse(saved);
+                boardData = state.boardData;
+                givensMask = state.givensMask;
+                notesData = state.notesData.map(arr => new Set(arr));
+                solutionData = state.solutionData;
+                currentDifficulty = state.currentDifficulty || 'medium';
+                difficultyDisplay.textContent = `Difficulty: ${currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}`;
+                renderBoard();
+                startTimer(state.timerSeconds || 0);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function recordGameHistory() {
+            const history = JSON.parse(localStorage.getItem('sudoku_history') || '[]');
+            history.unshift({
+                difficulty: currentDifficulty,
+                time: timerDisplay.textContent.replace('Time: ', ''),
+                date: new Date().toLocaleDateString()
+            });
+            localStorage.setItem('sudoku_history', JSON.stringify(history.slice(0, 10)));
+            renderHistoryLog();
+        }
+
+        function renderHistoryLog() {
+            const history = JSON.parse(localStorage.getItem('sudoku_history') || '[]');
+            if (history.length === 0) {
+                historyListElement.innerHTML = `<li style="color: var(--border-color); font-style: italic;">No completed games yet.</li>`;
                 return;
             }
-            boardData[selectedCellIndex] = num;
-            const cell = boardElement.children[selectedCellIndex];
-            cell.textContent = num;
-            cell.classList.add('user-filled');
+            historyListElement.innerHTML = history.map(item => `
+                <li>
+                    <span><strong>${item.difficulty.toUpperCase()}</strong> (${item.date})</span>
+                    <span>⏱️ ${item.time}</span>
+                </li>
+            `).join('');
         }
 
-        document.getElementById('newGameBtn').addEventListener('click', () => fetchNewPuzzle('medium'));
+        document.getElementById('newGameBtn').addEventListener('click', () => {
+            if (confirm("Start a new game? Current progress will be reset.")) {
+                fetchNewPuzzle('medium');
+            }
+        });
 
-        // Initial load
-        fetchNewPuzzle('medium');
+        renderHistoryLog();
+        if (!loadActiveGame()) {
+            fetchNewPuzzle('medium');
+        }
     </script>
 </body>
 </html>

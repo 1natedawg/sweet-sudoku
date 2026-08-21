@@ -313,6 +313,44 @@
             cursor: not-allowed;
         }
 
+        /* Tango Board Styling */
+        .tango-board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            width: 330px;
+            height: 330px;
+            border: 3px solid var(--thick-border-color);
+            background-color: var(--thick-border-color);
+            gap: 2px;
+            margin: 15px 0 20px 0;
+        }
+
+        .tango-cell {
+            background-color: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .tango-cell.given {
+            font-weight: bold;
+            color: var(--cell-given);
+        }
+
+        .tango-cell.error {
+            background-color: #fee2e2;
+            color: var(--cell-error);
+        }
+
+        [data-theme="dark"] .tango-cell.error {
+            background-color: #450a0a;
+            color: var(--cell-error);
+        }
+
         /* Options Modal Styling */
         .modal-overlay {
             position: fixed;
@@ -467,9 +505,7 @@
                 <span id="tangoDiffDisplay">Difficulty: Medium</span>
                 <span id="tangoTimerDisplay">Time: 00:00</span>
             </div>
-            <div class="tango-board" id="tangoBoard" style="margin: 40px 0; text-align: center; color: var(--border-color);">
-                [ Tango Generator & UI Ready for Code Implementation ]
-            </div>
+            <div class="tango-board" id="tangoBoard"></div>
         </div>
 
         <!-- QUEENS VIEW -->
@@ -507,6 +543,10 @@
                 <label for="toggleNoteHighlight">Highlight Matching Notes</label>
                 <input type="checkbox" id="toggleNoteHighlight" checked>
             </div>
+            <div class="setting-item">
+                <label for="toggleTangoErrors">Highlight Tango Errors</label>
+                <input type="checkbox" id="toggleTangoErrors" checked>
+            </div>
             <button class="modal-close-btn" id="closeModalBtn">Save & Close</button>
         </div>
     </div>
@@ -538,12 +578,14 @@
         const closeModalBtn = document.getElementById('closeModalBtn');
         const toggleSameNum = document.getElementById('toggleSameNum');
         const toggleNoteHighlight = document.getElementById('toggleNoteHighlight');
+        const toggleTangoErrors = document.getElementById('toggleTangoErrors');
         const htmlElement = document.documentElement;
 
         // Settings State
         let settings = {
             highlightSameNum: true,
-            highlightNotes: true
+            highlightNotes: true,
+            highlightTangoErrors: true
         };
 
         const savedSettings = localStorage.getItem('sudoku_settings');
@@ -552,6 +594,7 @@
                 settings = JSON.parse(savedSettings);
                 toggleSameNum.checked = settings.highlightSameNum;
                 toggleNoteHighlight.checked = settings.highlightNotes;
+                if (toggleTangoErrors) toggleTangoErrors.checked = settings.highlightTangoErrors;
             } catch (e) {}
         }
 
@@ -559,9 +602,11 @@
         closeModalBtn.addEventListener('click', () => {
             settings.highlightSameNum = toggleSameNum.checked;
             settings.highlightNotes = toggleNoteHighlight.checked;
+            settings.highlightTangoErrors = toggleTangoErrors.checked;
             localStorage.setItem('sudoku_settings', JSON.stringify(settings));
             optionsModal.classList.remove('open');
             if (selectedCellIndex !== null) selectCellPath(selectedCellIndex);
+            renderTangoBoard();
         });
 
         themeToggleBtn.addEventListener('click', () => {
@@ -571,7 +616,7 @@
             themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         });
 
-        // Game State Variables
+        // Game State Variables (Sudoku)
         let boardData = Array(81).fill(0);
         let givensMask = Array(81).fill(false);
         let notesData = Array(81).fill(null).map(() => new Set());
@@ -687,6 +732,29 @@
             undoStack = [];
             redoStack = [];
             activeStickyNumber = null;
+
+            console.log(`[Client] Requesting new Sudoku puzzle (${difficulty})...`);
+            try {
+                const response = await fetch(`/api/puzzle?game=sudoku&difficulty=${difficulty}`);
+                const data = await response.json();
+                
+                if (response.ok && data.board) {
+                    console.log('[Client] Successfully loaded Sudoku puzzle from backend API.');
+                    const flatBoard = data.board.flat();
+                    boardData = [...flatBoard];
+                    givensMask = flatBoard.map(val => val !== 0);
+                    solutionData = data.solution ? data.solution.flat() : [...flatBoard];
+                    notesData = Array(81).fill(null).map(() => new Set());
+                    renderBoard();
+                    startTimer(0);
+                    saveActiveGame();
+                    return;
+                }
+            } catch (err) {
+                console.warn('[Client] Backend unreachable or failed. Falling back to local mock Sudoku.', err);
+            }
+
+            // Fallback mock loader
             loadMockPuzzle();
         }
 
@@ -960,10 +1028,244 @@
             }
         });
 
+        // ==========================================
+        // ROBUST TANGO GAME MODULE & SOLVER
+        // ==========================================
+        const tangoBoardElement = document.getElementById('tangoBoard');
+        const tangoTimerDisplay = document.getElementById('tangoTimerDisplay');
+        const tangoDiffDisplay = document.getElementById('tangoDiffDisplay');
+        const tangoDifficultySelect = document.getElementById('tangoDifficultySelect');
+        const tangoNewGameBtn = document.getElementById('tangoNewGameBtn');
+
+        let tangoBoardData = Array(36).fill(''); // '' = empty, '☀️' = sun, '🌙' = moon
+        let tangoGivens = Array(36).fill(false);
+        let tangoSolution = Array(36).fill('');
+        let tangoTimerSeconds = 0;
+        let tangoTimerInterval = null;
+        let tangoIsWon = false;
+
+        for (let i = 0; i < 36; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('tango-cell');
+            cell.dataset.index = i;
+            cell.addEventListener('click', () => handleTangoCellClick(i));
+            tangoBoardElement.appendChild(cell);
+        }
+
+        function startTangoTimer(seconds = 0) {
+            clearInterval(tangoTimerInterval);
+            tangoTimerSeconds = seconds;
+            updateTangoTimerDisplay();
+            tangoTimerInterval = setInterval(() => {
+                if (!tangoIsWon) {
+                    tangoTimerSeconds++;
+                    updateTangoTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function updateTangoTimerDisplay() {
+            const mins = String(Math.floor(tangoTimerSeconds / 60)).padStart(2, '0');
+            const secs = String(tangoTimerSeconds % 60).padStart(2, '0');
+            tangoTimerDisplay.textContent = `Time: ${mins}:${secs}`;
+        }
+
+        // Check if a 6x6 grid array satisfies core Tango rules (no 3 in a row, equal counts per row/col)
+        function isValidTangoGrid(grid) {
+            // Check rows & columns for max count 3 and no 3 consecutive
+            for (let r = 0; r < 6; r++) {
+                let rSuns = 0, rMoons = 0;
+                for (let c = 0; c < 6; c++) {
+                    const val = grid[r * 6 + c];
+                    if (val === '☀️') rSuns++;
+                    if (val === '🌙') rMoons++;
+                    if (rSuns > 3 || rMoons > 3) return false;
+
+                    // Check horizontal 3-in-a-row
+                    if (c >= 2) {
+                        if (grid[r * 6 + c] && grid[r * 6 + c] === grid[r * 6 + c - 1] && grid[r * 6 + c] === grid[r * 6 + c - 2]) return false;
+                    }
+                }
+            }
+
+            for (let c = 0; c < 6; c++) {
+                let cSuns = 0, cMoons = 0;
+                for (let r = 0; r < 6; r++) {
+                    const val = grid[r * 6 + c];
+                    if (val === '☀️') cSuns++;
+                    if (val === '🌙') cMoons++;
+                    if (cSuns > 3 || cMoons > 3) return false;
+
+                    // Check vertical 3-in-a-row
+                    if (r >= 2) {
+                        if (grid[r * 6 + c] === grid[(r - 1) * 6 + c] && grid[r * 6 + c] === grid[(r - 2) * 6 + c]) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Recursive backtracking solver helper
+        function solveTango(grid, index = 0) {
+            if (index === 36) return isValidTangoGrid(grid);
+            if (grid[index] !== '') {
+                return solveTango(grid, index + 1);
+            }
+
+            for (let sym of ['☀️', '🌙']) {
+                grid[index] = sym;
+                if (isValidTangoGrid(grid)) {
+                    if (solveTango(grid, index + 1)) return true;
+                }
+                grid[index] = '';
+            }
+            return false;
+        }
+
+        // Generator: Creates a logic-backed puzzle layout
+function generateTangoPuzzle(difficulty = 'medium') {
+    // 1. Start with a completely empty grid
+    let grid = Array(36).fill('');
+    
+    // 2. Randomly pre-fill a couple of cells to ensure variety
+    // (e.g., placing 2 or 3 random suns/moons safely)
+    grid[Math.floor(Math.random() * 36)] = '☀️';
+    grid[Math.floor(Math.random() * 36)] = '🌙';
+
+    // 3. Invoke solveTango to let recursion fill the rest of the board legally!
+    if (solveTango(grid, 0)) {
+        tangoSolution = [...grid]; // This is our fully solved template
+    } else {
+        // Fallback if random placement causes a dead-end
+        return generateTangoPuzzle(difficulty); 
+    }
+
+    // 4. Carve out cells based on difficulty (hide items to create the puzzle)
+    tangoBoardData = Array(36).fill('');
+    tangoGivens = Array(36).fill(false);
+
+    let keepCount = difficulty === 'easy' ? 16 : difficulty === 'medium' ? 12 : 9;
+    let indices = Array.from({length: 36}, (_, i) => i).sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < keepCount; i++) {
+        let idx = indices[i];
+        tangoBoardData[idx] = tangoSolution[idx];
+        tangoGivens[idx] = true;
+    }
+}
+
+        async function initTangoGame(difficulty = 'medium') {
+            tangoDiffDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+            tangoIsWon = false;
+
+            console.log(`[Client] Requesting new Tango puzzle (${difficulty})...`);
+            try {
+                const response = await fetch(`/api/puzzle?game=tango&difficulty=${difficulty}`);
+                const data = await response.json();
+
+                if (response.ok && data.board) {
+                    console.log('[Client] Successfully loaded server-generated Tango puzzle.');
+                    tangoBoardData = data.board;
+                    tangoGivens = data.givens;
+                    tangoSolution = data.solution;
+                    renderTangoBoard();
+                    startTangoTimer(0);
+                    return;
+                }
+            } catch (err) {
+                console.warn('[Client] Tango backend fetch failed, using safe default layout.', err);
+            }
+
+            // Default safe fallback if offline
+            tangoSolution = ['☀️','🌙','☀️','🌙','🌙','☀️','🌙','☀️','🌙','☀️','☀️','🌙','☀️','🌙','☀️','🌙','🌙','☀️','🌙','☀️','🌙','☀️','☀️','🌙','☀️','🌙','☀️','🌙','🌙','☀️','🌙','☀️','🌙','☀️','☀️','🌙'];
+            tangoBoardData = [...tangoSolution];
+            tangoGivens = Array(36).fill(true);
+            renderTangoBoard();
+            startTangoTimer(0);
+        }
+
+        function getTangoErrors() {
+            let errors = Array(36).fill(false);
+            if (!settings.highlightTangoErrors) return errors;
+
+            // Check 3-in-a-row violations
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 6; c++) {
+                    let idx = r * 6 + c;
+                    let val = tangoBoardData[idx];
+                    if (!val) continue;
+
+                    // Horizontal check
+                    if (c <= 3 && val === tangoBoardData[r*6 + c+1] && val === tangoBoardData[r*6 + c+2]) {
+                        errors[idx] = true; errors[r*6 + c+1] = true; errors[r*6 + c+2] = true;
+                    }
+                    // Vertical check
+                    if (r <= 3 && val === tangoBoardData[(r+1)*6 + c] && val === tangoBoardData[(r+2)*6 + c]) {
+                        errors[idx] = true; errors[(r+1)*6 + c] = true; errors[(r+2)*6 + c] = true;
+                    }
+                }
+            }
+            return errors;
+        }
+
+        function renderTangoBoard() {
+            const cells = tangoBoardElement.children;
+            const errors = getTangoErrors();
+
+            for (let i = 0; i < 36; i++) {
+                const cell = cells[i];
+                cell.textContent = tangoBoardData[i];
+                cell.classList.toggle('given', tangoGivens[i]);
+                cell.classList.toggle('error', errors[i]);
+            }
+            checkTangoWin();
+        }
+
+        function handleTangoCellClick(index) {
+            if (tangoIsWon || tangoGivens[index]) return;
+
+            const current = tangoBoardData[index];
+            if (current === '') {
+                tangoBoardData[index] = '☀️';
+            } else if (current === '☀️') {
+                tangoBoardData[index] = '🌙';
+            } else {
+                tangoBoardData[index] = '';
+            }
+
+            renderTangoBoard();
+        }
+
+        function checkTangoWin() {
+            if (tangoIsWon) return;
+            const isFull = tangoBoardData.every(val => val !== '');
+            if (!isFull) return;
+
+            const errors = getTangoErrors();
+            const hasErrors = errors.some(err => err);
+            if (!hasErrors && isValidTangoGrid(tangoBoardData)) {
+                tangoIsWon = true;
+                clearInterval(tangoTimerInterval);
+                alert(`🎉 Tango Puzzle Completed Successfully in ${tangoTimerDisplay.textContent.replace('Time: ', '')}!`);
+            }
+        }
+
+        tangoNewGameBtn.addEventListener('click', () => {
+            if (confirm("Start a new Tango game? Current progress will be reset.")) {
+                initTangoGame(tangoDifficultySelect.value);
+            }
+        });
+
+        tangoDifficultySelect.addEventListener('change', (e) => {
+            initTangoGame(e.target.value);
+        });
+
+        // Initial startup routines
         renderHistoryLog();
         if (!loadActiveGame()) {
             fetchNewPuzzle('medium');
         }
+        initTangoGame('medium');
     </script>
 </body>
 </html>

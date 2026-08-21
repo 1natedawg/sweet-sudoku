@@ -1164,14 +1164,16 @@ function generateTangoPuzzle(difficulty = 'medium') {
                 const response = await fetch(`/api/puzzle?game=tango&difficulty=${difficulty}`);
                 const data = await response.json();
 
-                if (response.ok && data.puzzle) {
+                if (response.ok && data.board) {
                     console.log('[Client] Successfully loaded server-generated Tango puzzle.');
-                    tangoBoardData = data.puzzle;
+                    tangoBoardData = data.board;
                     tangoGivens = data.givens;
                     tangoSolution = data.solution;
                     renderTangoBoard();
                     startTangoTimer(0);
                     return;
+                } else {
+                    console.warn('[Client] Backend API no error, but puzzle data missing or malformed. Falling back to safe default.', data);
                 }
             } catch (err) {
                 console.warn('[Client] Tango backend fetch failed, using safe default layout.', err);

@@ -456,7 +456,6 @@
                         <option value="easy">Easy</option>
                         <option value="medium" selected>Medium</option>
                         <option value="hard">Hard</option>
-                        <option value="expert">Expert</option>
                     </select>
                     <button class="btn-secondary" id="optionsBtn" title="Options">⚙️</button>
                     <button class="btn-secondary" id="newGameBtn">New Game</button>
@@ -1240,11 +1239,18 @@ function generateTangoPuzzle(difficulty = 'medium') {
 
         function checkTangoWin() {
             if (tangoIsWon) return;
+            
+            // Ensure every cell is filled
             const isFull = tangoBoardData.every(val => val !== '');
             if (!isFull) return;
 
+            // Optional safeguard: ensure not *all* cells were filled by givens alone (i.e., user played)
+            const hasUserMoves = tangoBoardData.some((val, i) => !tangoGivens[i]);
+            if (!hasUserMoves) return;
+
             const errors = getTangoErrors();
             const hasErrors = errors.some(err => err);
+            
             if (!hasErrors && isValidTangoGrid(tangoBoardData)) {
                 tangoIsWon = true;
                 clearInterval(tangoTimerInterval);

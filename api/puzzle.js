@@ -134,6 +134,7 @@ function solveTango(grid, index = 0) {
 }
 
 function generateServerTango(size, difficulty) {
+    console.log(`Server generating Tango puzzle for size ${size} with difficulty ${difficulty}`);
     // 1. Build a valid balanced grid pattern (alternating columns/rows)
     let solution = Array(size * size).fill('');
     for (let r = 0; r < size; r++) {

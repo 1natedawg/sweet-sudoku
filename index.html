@@ -66,7 +66,7 @@
             padding: 24px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            max-width: 450px;
+            max-width: 600px;
             width: 100%;
         }
 
@@ -313,17 +313,20 @@
             cursor: not-allowed;
         }
 
-        /* Tango Board Styling */
+        /* Tango Board & Constraint Grid Styling */
+        .tango-board-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            overflow-x: auto;
+            margin: 15px 0 20px 0;
+        }
+
         .tango-board {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            grid-template-rows: repeat(6, 1fr);
-            width: 330px;
-            height: 330px;
-            border: 3px solid var(--thick-border-color);
-            background-color: var(--thick-border-color);
-            gap: 2px;
-            margin: 15px 0 20px 0;
+            border: 2px solid var(--thick-border-color);
+            background-color: var(--card-bg);
+            gap: 1px;
         }
 
         .tango-cell {
@@ -331,9 +334,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.6rem;
+            font-size: 1.2rem;
             cursor: pointer;
             user-select: none;
+            border: 1px solid var(--border-color);
         }
 
         .tango-cell.given {
@@ -349,6 +353,39 @@
         [data-theme="dark"] .tango-cell.error {
             background-color: #450a0a;
             color: var(--cell-error);
+        }
+
+        .tango-counter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 0 4px;
+            gap: 2px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .counter-balanced {
+            color: #94a3b8;
+            text-decoration: line-through;
+        }
+
+        .counter-over {
+            color: #ef4444;
+            font-weight: 800;
+        }
+
+        .tango-constraint-h, .tango-constraint-v {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #64748b;
         }
 
         /* Options Modal Styling */
@@ -492,6 +529,13 @@
             <header>
                 <h1>Tango (☀️ / 🌙)</h1>
                 <div class="controls-top">
+                    <select id="tangoSizeSelect" class="btn-secondary">
+                        <option value="6" selected>6x6</option>
+                        <option value="8">8x8</option>
+                        <option value="10">10x10</option>
+                        <option value="12">12x12</option>
+                        <option value="14">14x14</option>
+                    </select>
                     <select id="tangoDifficultySelect" class="btn-secondary">
                         <option value="easy">Easy</option>
                         <option value="medium" selected>Medium</option>
@@ -504,7 +548,9 @@
                 <span id="tangoDiffDisplay">Difficulty: Medium</span>
                 <span id="tangoTimerDisplay">Time: 00:00</span>
             </div>
-            <div class="tango-board" id="tangoBoard"></div>
+            <div class="tango-board-container">
+                <div class="tango-board" id="tangoBoard"></div>
+            </div>
         </div>
 
         <!-- QUEENS VIEW -->
@@ -748,14 +794,11 @@
                     startTimer(0);
                     saveActiveGame();
                     return;
-                } else {
-                    console.warn('[Client] Backend API no error, but puzzle data missing or malformed. Falling back to local mock Sudoku.', data);
                 }
             } catch (err) {
                 console.warn('[Client] Backend unreachable or failed. Falling back to local mock Sudoku.', err);
             }
 
-            // Fallback mock loader
             loadMockPuzzle();
         }
 
@@ -1030,28 +1073,23 @@
         });
 
         // ==========================================
-        // ROBUST TANGO GAME MODULE & SOLVER
+        // SCALABLE TANGO GAME MODULE & LIVE QUOTA VIEW
         // ==========================================
         const tangoBoardElement = document.getElementById('tangoBoard');
         const tangoTimerDisplay = document.getElementById('tangoTimerDisplay');
         const tangoDiffDisplay = document.getElementById('tangoDiffDisplay');
         const tangoDifficultySelect = document.getElementById('tangoDifficultySelect');
+        const tangoSizeSelect = document.getElementById('tangoSizeSelect');
         const tangoNewGameBtn = document.getElementById('tangoNewGameBtn');
 
-        let tangoBoardData = Array(36).fill(''); // '' = empty, '☀️' = sun, '🌙' = moon
-        let tangoGivens = Array(36).fill(false);
-        let tangoSolution = Array(36).fill('');
+        let tangoSize = 6;
+        let tangoBoardData = [];
+        let tangoGivens = [];
+        let tangoSolution = [];
+        let tangoConstraints = { horizontal: [], vertical: [] };
         let tangoTimerSeconds = 0;
         let tangoTimerInterval = null;
         let tangoIsWon = false;
-
-        for (let i = 0; i < 36; i++) {
-            const cell = document.createElement('div');
-            cell.classList.add('tango-cell');
-            cell.dataset.index = i;
-            cell.addEventListener('click', () => handleTangoCellClick(i));
-            tangoBoardElement.appendChild(cell);
-        }
 
         function startTangoTimer(seconds = 0) {
             clearInterval(tangoTimerInterval);
@@ -1071,97 +1109,14 @@
             tangoTimerDisplay.textContent = `Time: ${mins}:${secs}`;
         }
 
-        // Check if a 6x6 grid array satisfies core Tango rules (no 3 in a row, equal counts per row/col)
-        function isValidTangoGrid(grid) {
-            // Check rows & columns for max count 3 and no 3 consecutive
-            for (let r = 0; r < 6; r++) {
-                let rSuns = 0, rMoons = 0;
-                for (let c = 0; c < 6; c++) {
-                    const val = grid[r * 6 + c];
-                    if (val === '☀️') rSuns++;
-                    if (val === '🌙') rMoons++;
-                    if (rSuns > 3 || rMoons > 3) return false;
-
-                    // Check horizontal 3-in-a-row
-                    if (c >= 2) {
-                        if (grid[r * 6 + c] && grid[r * 6 + c] === grid[r * 6 + c - 1] && grid[r * 6 + c] === grid[r * 6 + c - 2]) return false;
-                    }
-                }
-            }
-
-            for (let c = 0; c < 6; c++) {
-                let cSuns = 0, cMoons = 0;
-                for (let r = 0; r < 6; r++) {
-                    const val = grid[r * 6 + c];
-                    if (val === '☀️') cSuns++;
-                    if (val === '🌙') cMoons++;
-                    if (cSuns > 3 || cMoons > 3) return false;
-
-                    // Check vertical 3-in-a-row
-                    if (r >= 2) {
-                        if (grid[r * 6 + c] === grid[(r - 1) * 6 + c] && grid[r * 6 + c] === grid[(r - 2) * 6 + c]) return false;
-                    }
-                }
-            }
-            return true;
-        }
-
-        // Recursive backtracking solver helper
-        function solveTango(grid, index = 0) {
-            if (index === 36) return isValidTangoGrid(grid);
-            if (grid[index] !== '') {
-                return solveTango(grid, index + 1);
-            }
-
-            for (let sym of ['☀️', '🌙']) {
-                grid[index] = sym;
-                if (isValidTangoGrid(grid)) {
-                    if (solveTango(grid, index + 1)) return true;
-                }
-                grid[index] = '';
-            }
-            return false;
-        }
-
-        // Generator: Creates a logic-backed puzzle layout
-function generateTangoPuzzle(difficulty = 'medium') {
-    // 1. Start with a completely empty grid
-    let grid = Array(36).fill('');
-    
-    // 2. Randomly pre-fill a couple of cells to ensure variety
-    // (e.g., placing 2 or 3 random suns/moons safely)
-    grid[Math.floor(Math.random() * 36)] = '☀️';
-    grid[Math.floor(Math.random() * 36)] = '🌙';
-
-    // 3. Invoke solveTango to let recursion fill the rest of the board legally!
-    if (solveTango(grid, 0)) {
-        tangoSolution = [...grid]; // This is our fully solved template
-    } else {
-        // Fallback if random placement causes a dead-end
-        return generateTangoPuzzle(difficulty); 
-    }
-
-    // 4. Carve out cells based on difficulty (hide items to create the puzzle)
-    tangoBoardData = Array(36).fill('');
-    tangoGivens = Array(36).fill(false);
-
-    let keepCount = difficulty === 'easy' ? 16 : difficulty === 'medium' ? 12 : 9;
-    let indices = Array.from({length: 36}, (_, i) => i).sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < keepCount; i++) {
-        let idx = indices[i];
-        tangoBoardData[idx] = tangoSolution[idx];
-        tangoGivens[idx] = true;
-    }
-}
-
-        async function initTangoGame(difficulty = 'medium') {
-            tangoDiffDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+        async function initTangoGame(size = 6, difficulty = 'medium') {
+            tangoSize = size;
             tangoIsWon = false;
+            tangoDiffDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
 
-            console.log(`[Client] Requesting new Tango puzzle (${difficulty})...`);
+            console.log(`[Client] Requesting Tango puzzle (${size}x${size}, ${difficulty})...`);
             try {
-                const response = await fetch(`/api/puzzle?game=tango&difficulty=${difficulty}`);
+                const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}`);
                 const data = await response.json();
 
                 if (response.ok && data.board) {
@@ -1169,42 +1124,40 @@ function generateTangoPuzzle(difficulty = 'medium') {
                     tangoBoardData = data.board;
                     tangoGivens = data.givens;
                     tangoSolution = data.solution;
+                    tangoConstraints = data.constraints || { horizontal: [], vertical: [] };
                     renderTangoBoard();
                     startTangoTimer(0);
                     return;
-                } else {
-                    console.warn('[Client] Backend API no error, but puzzle data missing or malformed. Falling back to safe default.', data);
                 }
             } catch (err) {
-                console.warn('[Client] Tango backend fetch failed, using safe default layout.', err);
+                console.warn('[Client] Tango backend fetch failed, generating local fallback grid.', err);
             }
 
-            // Default safe fallback if offline
-            tangoSolution = ['☀️','🌙','☀️','🌙','🌙','☀️','🌙','☀️','🌙','☀️','☀️','🌙','☀️','🌙','☀️','🌙','🌙','☀️','🌙','☀️','🌙','☀️','☀️','🌙','☀️','🌙','☀️','🌙','🌙','☀️','🌙','☀️','🌙','☀️','☀️','🌙'];
-            tangoBoardData = [...tangoSolution];
-            tangoGivens = Array(36).fill(true);
+            // Fallback grid if offline
+            tangoBoardData = Array(size * size).fill('');
+            tangoGivens = Array(size * size).fill(false);
+            tangoConstraints = { horizontal: [], vertical: [] };
             renderTangoBoard();
             startTangoTimer(0);
         }
 
         function getTangoErrors() {
-            let errors = Array(36).fill(false);
+            let errors = Array(tangoSize * tangoSize).fill(false);
             if (!settings.highlightTangoErrors) return errors;
 
-            // Check 3-in-a-row violations
-            for (let r = 0; r < 6; r++) {
-                for (let c = 0; c < 6; c++) {
-                    let idx = r * 6 + c;
+            for (let r = 0; r < tangoSize; r++) {
+                for (let c = 0; c < tangoSize; c++) {
+                    let idx = r * tangoSize + c;
                     let val = tangoBoardData[idx];
                     if (!val) continue;
 
                     // Horizontal check
-                    if (c <= 3 && val === tangoBoardData[r*6 + c+1] && val === tangoBoardData[r*6 + c+2]) {
-                        errors[idx] = true; errors[r*6 + c+1] = true; errors[r*6 + c+2] = true;
+                    if (c <= tangoSize - 3 && val === tangoBoardData[r * tangoSize + c + 1] && val === tangoBoardData[r * tangoSize + c + 2]) {
+                        errors[idx] = true; errors[r * tangoSize + c + 1] = true; errors[r * tangoSize + c + 2] = true;
                     }
                     // Vertical check
-                    if (r <= 3 && val === tangoBoardData[(r+1)*6 + c] && val === tangoBoardData[(r+2)*6 + c]) {
-                        errors[idx] = true; errors[(r+1)*6 + c] = true; errors[(r+2)*6 + c] = true;
+                    if (r <= tangoSize - 3 && val === tangoBoardData[(r + 1) * tangoSize + c] && val === tangoBoardData[(r + 2) * tangoSize + c]) {
+                        errors[idx] = true; errors[(r + 1) * tangoSize + c] = true; errors[(r + 2) * tangoSize + c] = true;
                     }
                 }
             }
@@ -1212,15 +1165,66 @@ function generateTangoPuzzle(difficulty = 'medium') {
         }
 
         function renderTangoBoard() {
-            const cells = tangoBoardElement.children;
+            tangoBoardElement.style.gridTemplateColumns = `repeat(${tangoSize}, 38px) auto`;
+            tangoBoardElement.innerHTML = '';
+
+            const targetCount = tangoSize / 2;
             const errors = getTangoErrors();
 
-            for (let i = 0; i < 36; i++) {
-                const cell = cells[i];
-                cell.textContent = tangoBoardData[i];
-                cell.classList.toggle('given', tangoGivens[i]);
-                cell.classList.toggle('error', errors[i]);
+            for (let r = 0; r < tangoSize; r++) {
+                let rSuns = 0, rMoons = 0;
+
+                // Render cells & horizontal constraints for the row
+                for (let c = 0; c < tangoSize; c++) {
+                    const idx = r * tangoSize + c;
+                    const val = tangoBoardData[idx];
+                    if (val === '☀️') rSuns++;
+                    if (val === '🌙') rMoons++;
+
+                    const cell = document.createElement('div');
+                    cell.className = `tango-cell ${tangoGivens[idx] ? 'given' : ''} ${errors[idx] ? 'error' : ''}`;
+                    cell.style.width = '38px';
+                    cell.style.height = '38px';
+                    cell.textContent = val;
+                    cell.onclick = () => handleTangoCellClick(idx);
+                    tangoBoardElement.appendChild(cell);
+
+                    if (c < tangoSize - 1) {
+                        const constraint = tangoConstraints.horizontal.find(h => h.r === r && h.c === c);
+                        const marker = document.createElement('div');
+                        marker.className = 'tango-constraint-h';
+                        marker.textContent = constraint ? constraint.type : '';
+                        tangoBoardElement.appendChild(marker);
+                    }
+                }
+
+                // Row Counter Live View (#suns | #moons)
+                const counter = document.createElement('div');
+                counter.className = 'tango-counter';
+                let sunClass = rSuns > targetCount ? 'counter-over' : (rSuns === targetCount ? 'counter-balanced' : '');
+                let moonClass = rMoons > targetCount ? 'counter-over' : (rMoons === targetCount ? 'counter-balanced' : '');
+                counter.innerHTML = `<span class="${sunClass}">${rSuns}☀️</span>|<span class="${moonClass}">${rMoons}🌙</span>`;
+                tangoBoardElement.appendChild(counter);
+
+                // Vertical constraint rows
+                if (r < tangoSize - 1) {
+                    for (let c = 0; c < tangoSize; c++) {
+                        const constraint = tangoConstraints.vertical.find(v => v.r === r && v.c === c);
+                        const marker = document.createElement('div');
+                        marker.className = 'tango-constraint-v';
+                        marker.textContent = constraint ? constraint.type : '';
+                        tangoBoardElement.appendChild(marker);
+
+                        if (c < tangoSize - 1) {
+                            const spacer = document.createElement('div');
+                            tangoBoardElement.appendChild(spacer);
+                        }
+                    }
+                    const spacerEnd = document.createElement('div');
+                    tangoBoardElement.appendChild(spacerEnd);
+                }
             }
+
             checkTangoWin();
         }
 
@@ -1228,32 +1232,41 @@ function generateTangoPuzzle(difficulty = 'medium') {
             if (tangoIsWon || tangoGivens[index]) return;
 
             const current = tangoBoardData[index];
-            if (current === '') {
-                tangoBoardData[index] = '☀️';
-            } else if (current === '☀️') {
-                tangoBoardData[index] = '🌙';
-            } else {
-                tangoBoardData[index] = '';
-            }
+            if (current === '') tangoBoardData[index] = '☀️';
+            else if (current === '☀️') tangoBoardData[index] = '🌙';
+            else tangoBoardData[index] = '';
 
             renderTangoBoard();
         }
 
         function checkTangoWin() {
             if (tangoIsWon) return;
-            
-            // Ensure every cell is filled
             const isFull = tangoBoardData.every(val => val !== '');
             if (!isFull) return;
 
-            // Optional safeguard: ensure not *all* cells were filled by givens alone (i.e., user played)
             const hasUserMoves = tangoBoardData.some((val, i) => !tangoGivens[i]);
             if (!hasUserMoves) return;
 
             const errors = getTangoErrors();
-            const hasErrors = errors.some(err => err);
-            
-            if (!hasErrors && isValidTangoGrid(tangoBoardData)) {
+            if (errors.some(err => err)) return;
+
+            const targetCount = tangoSize / 2;
+            let valid = true;
+
+            for (let i = 0; i < tangoSize; i++) {
+                let rSuns = 0, rMoons = 0, cSuns = 0, cMoons = 0;
+                for (let j = 0; j < tangoSize; j++) {
+                    if (tangoBoardData[i * tangoSize + j] === '☀️') rSuns++;
+                    if (tangoBoardData[i * tangoSize + j] === '🌙') rMoons++;
+                    if (tangoBoardData[j * tangoSize + i] === '☀️') cSuns++;
+                    if (tangoBoardData[j * tangoSize + i] === '🌙') cMoons++;
+                }
+                if (rSuns !== targetCount || rMoons !== targetCount || cSuns !== targetCount || cMoons !== targetCount) {
+                    valid = false;
+                }
+            }
+
+            if (valid) {
                 tangoIsWon = true;
                 clearInterval(tangoTimerInterval);
                 alert(`🎉 Tango Puzzle Completed Successfully in ${tangoTimerDisplay.textContent.replace('Time: ', '')}!`);
@@ -1262,12 +1275,16 @@ function generateTangoPuzzle(difficulty = 'medium') {
 
         tangoNewGameBtn.addEventListener('click', () => {
             if (confirm("Start a new Tango game? Current progress will be reset.")) {
-                initTangoGame(tangoDifficultySelect.value);
+                initTangoGame(parseInt(tangoSizeSelect.value), tangoDifficultySelect.value);
             }
         });
 
         tangoDifficultySelect.addEventListener('change', (e) => {
-            initTangoGame(e.target.value);
+            initTangoGame(parseInt(tangoSizeSelect.value), e.target.value);
+        });
+
+        tangoSizeSelect.addEventListener('change', (e) => {
+            initTangoGame(parseInt(e.target.value), tangoDifficultySelect.value);
         });
 
         // Initial startup routines
@@ -1275,7 +1292,7 @@ function generateTangoPuzzle(difficulty = 'medium') {
         if (!loadActiveGame()) {
             fetchNewPuzzle('medium');
         }
-        initTangoGame('medium');
+        initTangoGame(6, 'medium');
     </script>
 </body>
 </html>

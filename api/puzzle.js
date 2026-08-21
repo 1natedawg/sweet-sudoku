@@ -26,20 +26,24 @@ export default async function handler(req, res) {
             console.error('[API Generator] Sudoku proxy error:', error);
             return res.status(500).json({ error: 'Internal server error while fetching Sudoku puzzle.' });
         }
-    } 
-    
+    }
+
     else if (game === 'tango') {
-        console.log('[API Generator] Generating Tango puzzle server-side...');
+        // Determine grid size based on difficulty/size param (default 6x6, scaling up to 14x14)
+        const sizeParam = parseInt(req.query.size) || 6;
+        const size = Math.max(6, Math.min(14, sizeParam));
+        console.log(`[API Generator] Generating Tango puzzle for size ${size}x${size} (${difficulty})...`);
+
         try {
-            const puzzle = generateServerTango(difficulty);
+            const puzzle = generateServerTango(size, difficulty);
             console.log('[API Generator] Tango puzzle generated successfully.');
             return res.status(200).json(puzzle);
         } catch (err) {
             console.error('[API Generator] Tango generation error:', err);
             return res.status(500).json({ error: 'Failed to generate Tango puzzle.' });
         }
-    } 
-    
+    }
+
     else if (game === 'queens') {
         console.log('[API Generator] Generating Queens puzzle server-side...');
         try {
@@ -58,83 +62,133 @@ export default async function handler(req, res) {
 
 // --- Server-Side Tango Generator & Solver Logic ---
 function isValidTangoGrid(grid) {
+    // Loop through each of the 6 rows
     for (let r = 0; r < 6; r++) {
         let rSuns = 0, rMoons = 0;
+        // Loop through each column in the current row
         for (let c = 0; c < 6; c++) {
-            const val = grid[r * 6 + c];
+            const val = grid[r * 6 + c]; // Map 2D coordinate (r, c) to a 1D array index (0 to 35)
+
+            // Count symbols in this row
             if (val === '☀️') rSuns++;
             if (val === '🌙') rMoons++;
+            // Rule check: A row cannot exceed 3 of either symbol
             if (rSuns > 3 || rMoons > 3) return false;
-            if (c >= 2 && grid[r * 6 + c] && grid[r * 6 + c] === grid[r * 6 + c - 1] && grid[r * 6 + c] === grid[r * 6 + c - 2]) return false;
+
+            // Rule check: Check for 3 consecutive identical symbols horizontally (current, -1, and -2)
+            if (c >= 2 && grid[r * 6 + c] && grid[r * 6 + c] === grid[r * 6 + c - 1] && grid[r * 6 + c] === grid[r * 6 + c - 2]) {
+                return false;
+            }
         }
     }
+
+    // Loop through each of the 6 columns
     for (let c = 0; c < 6; c++) {
         let cSuns = 0, cMoons = 0;
+
+        // Loop through each row in the current column
         for (let r = 0; r < 6; r++) {
             const val = grid[r * 6 + c];
+
+            // Count symbols in this column
             if (val === '☀️') cSuns++;
             if (val === '🌙') cMoons++;
+
+            // Rule check: A column cannot exceed 3 of either symbol
             if (cSuns > 3 || cMoons > 3) return false;
-            if (r >= 2 && grid[r * 6 + c] && grid[r * 6 + c] === grid[(r - 1) * 6 + c] && grid[r * 6 + c] === grid[(r - 2) * 6 + c]) return false;
+
+            // Rule check: Check for 3 consecutive identical symbols vertically
+            if (r >= 2 && grid[r * 6 + c] && grid[r * 6 + c] === grid[(r - 1) * 6 + c] && grid[r * 6 + c] === grid[(r - 2) * 6 + c]) {
+                return false;
+            }
         }
     }
+
+    // If all checks pass, this board state is valid so far
     return true;
 }
 
 function solveTango(grid, index = 0) {
+    // Base Case: If we've stepped past the last cell (index 36), validate the full board
     if (index === 36) return isValidTangoGrid(grid);
+    
+    // If the current cell already has a pre-filled symbol, skip it and move to the next index
     if (grid[index] !== '') return solveTango(grid, index + 1);
 
+    // Try placing both symbols ('☀️' and '🌙') into the empty cell
     for (let sym of ['☀️', '🌙']) {
-        grid[index] = sym;
+        grid[index] = sym; // Tentatively place the symbol
+        
+        // Check if the board is still valid with this choice
         if (isValidTangoGrid(grid)) {
-            if (solveTango(grid, index + 1)) return true;
+            // Recursively attempt to solve the rest of the board from the next index
+            if (solveTango(grid, index + 1)) return true; // If successful, bubble 'true' up
         }
+        
+        // Backtracking step: If the choice led to a dead-end, undo it (reset to '') and try the other symbol
         grid[index] = '';
     }
+    
+    // If neither symbol works, trigger backtracking on the previous step
     return false;
 }
 
-function generateServerTango(difficulty) {
-    let grid = Array(36).fill('');
-    grid[Math.floor(Math.random() * 36)] = '☀️';
-    grid[Math.floor(Math.random() * 36)] = '🌙';
-
-    if (!solveTango(grid, 0)) {
-        // Fallback standard valid template if random seed hits dead-end
-        grid = [
-            '☀️','🌙','☀️','🌙','🌙','☀️',
-            '🌙','☀️','🌙','☀️','☀️','🌙',
-            '☀️','🌙','☀️','🌙','🌙','☀️',
-            '🌙','☀️','🌙','☀️','☀️','🌙',
-            '☀️','🌙','☀️','🌙','🌙','☀️',
-            '🌙','☀️','🌙','☀️','☀️','🌙'
-        ];
+function generateServerTango(size, difficulty) {
+    // 1. Build a valid balanced grid pattern (alternating columns/rows)
+    let solution = Array(size * size).fill('');
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            solution[r * size + c] = ((r + c) % 2 === 0) ? '☀️' : '🌙';
+        }
     }
 
-    const solution = [...grid];
-    const board = Array(36).fill('');
-    const givens = Array(36).fill(false);
-    const keepCount = difficulty === 'easy' ? 16 : difficulty === 'medium' ? 12 : 9;
+    // 2. Generate boundary constraints (= and ×) between adjacent pairs
+    const constraints = { horizontal: [], vertical: [] };
     
-    let indices = Array.from({length: 36}, (_, i) => i).sort(() => Math.random() - 0.5);
+    // Horizontal constraints (between col c and c+1 for each row)
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size - 1; c++) {
+            const current = solution[r * size + c];
+            const next = solution[r * size + (c + 1)];
+            const type = (current === next) ? '=' : '×';
+            constraints.horizontal.push({ r, c, type });
+        }
+    }
+
+    // Vertical constraints (between row r and r+1 for each col)
+    for (let r = 0; r < size - 1; r++) {
+        for (let c = 0; c < size; c++) {
+            const current = solution[r * size + c];
+            const next = solution[(r + 1) * size + c];
+            const type = (current === next) ? '=' : '×';
+            constraints.vertical.push({ r, c, type });
+        }
+    }
+
+    // 3. Carve out puzzle board based on difficulty
+    const board = Array(size * size).fill('');
+    const givens = Array(size * size).fill(false);
+    const keepRatio = difficulty === 'easy' ? 0.45 : difficulty === 'medium' ? 0.35 : 0.25;
+    const keepCount = Math.floor((size * size) * keepRatio);
+
+    let indices = Array.from({ length: size * size }, (_, i) => i).sort(() => Math.random() - 0.5);
     for (let i = 0; i < keepCount; i++) {
         let idx = indices[i];
         board[idx] = solution[idx];
         givens[idx] = true;
     }
 
-    return { board, givens, solution };
+    return { size, board, givens, solution, constraints };
 }
 
 // --- Server-Side Queens Generator Logic ---
 function generateServerQueens(size) {
     // Generates valid non-attacking queen placements per row
     let board = Array(size).fill(-1);
-    
+
     function solveQueens(row) {
         if (row === size) return true;
-        let cols = Array.from({length: size}, (_, i) => i).sort(() => Math.random() - 0.5);
+        let cols = Array.from({ length: size }, (_, i) => i).sort(() => Math.random() - 0.5);
         for (let col of cols) {
             let safe = true;
             for (let prevRow = 0; prevRow < row; prevRow++) {

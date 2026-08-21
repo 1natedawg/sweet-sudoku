@@ -738,9 +738,9 @@
                 const response = await fetch(`/api/puzzle?game=sudoku&difficulty=${difficulty}`);
                 const data = await response.json();
                 
-                if (response.ok && data.board) {
+                if (response.ok && data.puzzle) {
                     console.log('[Client] Successfully loaded Sudoku puzzle from backend API.');
-                    const flatBoard = data.board.flat();
+                    const flatBoard = data.puzzle.flat();
                     boardData = [...flatBoard];
                     givensMask = flatBoard.map(val => val !== 0);
                     solutionData = data.solution ? data.solution.flat() : [...flatBoard];
@@ -749,6 +749,8 @@
                     startTimer(0);
                     saveActiveGame();
                     return;
+                } else {
+                    console.warn('[Client] Backend API no error, but puzzle data missing or malformed. Falling back to local mock Sudoku.', data);
                 }
             } catch (err) {
                 console.warn('[Client] Backend unreachable or failed. Falling back to local mock Sudoku.', err);
@@ -1163,9 +1165,9 @@ function generateTangoPuzzle(difficulty = 'medium') {
                 const response = await fetch(`/api/puzzle?game=tango&difficulty=${difficulty}`);
                 const data = await response.json();
 
-                if (response.ok && data.board) {
+                if (response.ok && data.puzzle) {
                     console.log('[Client] Successfully loaded server-generated Tango puzzle.');
-                    tangoBoardData = data.board;
+                    tangoBoardData = data.puzzle;
                     tangoGivens = data.givens;
                     tangoSolution = data.solution;
                     renderTangoBoard();

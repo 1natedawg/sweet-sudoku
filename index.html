@@ -1036,10 +1036,10 @@
     tangoSize = size;
     tangoIsWon = false;
     tangoDiffDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
-
+    
     try {
-        console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}`);
-        const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}`);
+        console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}, density=${settings.tangoDensity}`);
+        const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${settings.tangoDensity}`);
         const data = await response.json();
         
         if (response.ok && data.board) {

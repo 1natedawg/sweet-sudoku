@@ -32,10 +32,11 @@ export default async function handler(req, res) {
         // Determine grid size based on difficulty/size param (default 6x6, scaling up to 14x14)
         const sizeParam = parseInt(req.query.size) || 6;
         const size = Math.max(6, Math.min(14, sizeParam));
-        console.log(`[API Generator] Generating Tango puzzle for size ${size}x${size} (${difficulty})...`);
+        const density = req.query.density || 30; // Default density percentage for Tango puzzle
+        console.log(`[API Generator] Generating Tango puzzle for size ${size}x${size} (${difficulty}), density ${density}%...`);
 
         try {
-            const puzzle = generateServerTango(size, difficulty);
+            const puzzle = generateServerTango(size, difficulty, density);
             console.log('[API Generator] Tango puzzle generated successfully.');
             return res.status(200).json(puzzle);
         } catch (err) {
@@ -133,8 +134,8 @@ function solveTango(grid, index = 0) {
     return false;
 }
 
-function generateServerTango(size, difficulty) {
-    console.log(`Server generating Tango puzzle for size ${size} with difficulty ${difficulty}`);
+function generateServerTango(size, difficulty, density) {
+    console.log(`Server generating Tango puzzle for size ${size} with difficulty ${difficulty}, density ${density}%`);
     // 1. Build a valid balanced grid pattern (alternating columns/rows)
     let solution = Array(size * size).fill('');
     for (let r = 0; r < size; r++) {

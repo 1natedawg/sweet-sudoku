@@ -62,124 +62,6 @@ export default async function handler(req, res) {
 }
 
 // --- Server-Side Tango Generator & Solver Logic ---
-function isValidTangoGrid(grid) {
-    // Loop through each of the 6 rows
-    for (let r = 0; r < 6; r++) {
-        let rSuns = 0, rMoons = 0;
-        // Loop through each column in the current row
-        for (let c = 0; c < 6; c++) {
-            const val = grid[r * 6 + c]; // Map 2D coordinate (r, c) to a 1D array index (0 to 35)
-
-            // Count symbols in this row
-            if (val === '☀️') rSuns++;
-            if (val === '🌙') rMoons++;
-            // Rule check: A row cannot exceed 3 of either symbol
-            if (rSuns > 3 || rMoons > 3) return false;
-
-            // Rule check: Check for 3 consecutive identical symbols horizontally (current, -1, and -2)
-            if (c >= 2 && grid[r * 6 + c] && grid[r * 6 + c] === grid[r * 6 + c - 1] && grid[r * 6 + c] === grid[r * 6 + c - 2]) {
-                return false;
-            }
-        }
-    }
-
-    // Loop through each of the 6 columns
-    for (let c = 0; c < 6; c++) {
-        let cSuns = 0, cMoons = 0;
-
-        // Loop through each row in the current column
-        for (let r = 0; r < 6; r++) {
-            const val = grid[r * 6 + c];
-
-            // Count symbols in this column
-            if (val === '☀️') cSuns++;
-            if (val === '🌙') cMoons++;
-
-            // Rule check: A column cannot exceed 3 of either symbol
-            if (cSuns > 3 || cMoons > 3) return false;
-
-            // Rule check: Check for 3 consecutive identical symbols vertically
-            if (r >= 2 && grid[r * 6 + c] && grid[r * 6 + c] === grid[(r - 1) * 6 + c] && grid[r * 6 + c] === grid[(r - 2) * 6 + c]) {
-                return false;
-            }
-        }
-    }
-
-    // If all checks pass, this board state is valid so far
-    return true;
-}
-
-function solveTango(grid, index = 0) {
-    // Base Case: If we've stepped past the last cell (index 36), validate the full board
-    if (index === 36) return isValidTangoGrid(grid);
-    
-    // If the current cell already has a pre-filled symbol, skip it and move to the next index
-    if (grid[index] !== '') return solveTango(grid, index + 1);
-
-    // Try placing both symbols ('☀️' and '🌙') into the empty cell
-    for (let sym of ['☀️', '🌙']) {
-        grid[index] = sym; // Tentatively place the symbol
-        
-        // Check if the board is still valid with this choice
-        if (isValidTangoGrid(grid)) {
-            // Recursively attempt to solve the rest of the board from the next index
-            if (solveTango(grid, index + 1)) return true; // If successful, bubble 'true' up
-        }
-        
-        // Backtracking step: If the choice led to a dead-end, undo it (reset to '') and try the other symbol
-        grid[index] = '';
-    }
-    
-    // If neither symbol works, trigger backtracking on the previous step
-    return false;
-}
-
-function generateServerTango(size, difficulty, density) {
-    console.log(`Server generating Tango puzzle for size ${size} with density ${density}%`);
-    
-    let solution = Array(size * size).fill('');
-    // Create a valid alternating base solution layout
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            solution[r * size + c] = ((r + c) % 2 === 0) ? '☀️' : '🌙';
-        }
-    }
-
-    // Generate constraints (= and ×)
-    const constraints = { horizontal: [], vertical: [] };
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size - 1; c++) {
-            constraints.horizontal.push({ r, c, type: solution[r * size + c] === solution[r * size + (c + 1)] ? '=' : '×' });
-        }
-    }
-    for (let r = 0; r < size - 1; r++) {
-        for (let c = 0; c < size; c++) {
-            constraints.vertical.push({ r, c, type: solution[r * size + c] === solution[(r + 1) * size + c] ? '=' : '×' });
-        }
-    }
-
-    // Carve out board matching the target density (percentage of clues provided)
-    const targetCluesCount = Math.floor((size * size) * (density / 100));
-    let board = Array(size * size).fill('');
-    let givens = Array(size * size).fill(false);
-
-    let indices = Array.from({ length: size * size }, (_, i) => i).sort(() => Math.random() - 0.5);
-    
-    // Add clues until density requirement and deduction solvability are met
-    for (let i = 0; i < size * size; i++) {
-        let idx = indices[i];
-        board[idx] = solution[idx];
-        givens[idx] = true;
-
-        // Check if we hit the density target and it is solvable via pure deduction helpers
-        if (i >= targetCluesCount && canBeSolvedByDeduction(board, size, constraints)) {
-            break;
-        }
-    }
-
-    return { size, board, givens, solution, constraints };
-}
-// --- Server-Side Tango Generator & Solver Logic ---
 
 function isValidTangoGrid(grid, size) {
     const half = size / 2;
@@ -216,6 +98,21 @@ function isValidTangoGrid(grid, size) {
     }
     return true;
 }
+
+function solveTango(grid, index = 0, size = 6) {
+    if (index === size * size) return isValidTangoGrid(grid, size);
+    if (grid[index] !== '') return solveTango(grid, index + 1, size);
+
+    for (let sym of ['☀️', '🌙']) {
+        grid[index] = sym;
+        if (isValidTangoGrid(grid, size)) {
+            if (solveTango(grid, index + 1, size)) return true;
+        }
+        grid[index] = '';
+    }
+    return false;
+}
+
 // Deduction Engine: Tests if a board can be solved purely through rules without guessing
 function canBeSolvedByDeduction(givens, size, constraints) {
     let board = [...givens];
@@ -322,9 +219,49 @@ function canBeSolvedByDeduction(givens, size, constraints) {
     return board.every(cell => cell !== '');
 }
 
+function generateServerTango(size, difficulty, density) {
+    console.log(`Server generating Tango puzzle for size ${size} with density ${density}%`);
+    
+    let solution = Array(size * size).fill('');
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            solution[r * size + c] = ((r + c) % 2 === 0) ? '☀️' : '🌙';
+        }
+    }
+
+    const constraints = { horizontal: [], vertical: [] };
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size - 1; c++) {
+            constraints.horizontal.push({ r, c, type: solution[r * size + c] === solution[r * size + (c + 1)] ? '=' : '×' });
+        }
+    }
+    for (let r = 0; r < size - 1; r++) {
+        for (let c = 0; c < size; c++) {
+            constraints.vertical.push({ r, c, type: solution[r * size + c] === solution[(r + 1) * size + c] ? '=' : '×' });
+        }
+    }
+
+    const targetCluesCount = Math.floor((size * size) * (density / 100));
+    let board = Array(size * size).fill('');
+    let givens = Array(size * size).fill(false);
+
+    let indices = Array.from({ length: size * size }, (_, i) => i).sort(() => Math.random() - 0.5);
+    
+    for (let i = 0; i < size * size; i++) {
+        let idx = indices[i];
+        board[idx] = solution[idx];
+        givens[idx] = true;
+
+        if (i >= targetCluesCount && canBeSolvedByDeduction(board, size, constraints)) {
+            break;
+        }
+    }
+
+    return { size, board, givens, solution, constraints };
+}
+
 // --- Server-Side Queens Generator Logic ---
 function generateServerQueens(size) {
-    // Generates valid non-attacking queen placements per row
     let board = Array(size).fill(-1);
 
     function solveQueens(row) {
@@ -349,11 +286,10 @@ function generateServerQueens(size) {
     }
 
     solveQueens(0);
-    // Build color regions assignment for the Queens board
     let regions = Array(size * size).fill(0);
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
-            regions[r * size + c] = (r + c) % Math.min(size, 5); // Simple generated region grouping
+            regions[r * size + c] = (r + c) % Math.min(size, 5);
         }
     }
 

@@ -1,93 +1,969 @@
-<div class="container">
-    <!-- Top Game Navigation Tabs -->
-    <nav class="game-nav">
-        <button class="nav-tab active" data-game="sudoku">Sudoku</button>
-        <button class="nav-tab" data-game="tango">Tango</button>
-        <button class="nav-tab" data-game="queens">Queens</button>
-    </nav>
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Puzzle Suite</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #b0b0b0;
+            --thick-border-color: #222222;
+            --cell-selected: #e3f2fd;
+            --cell-highlight: #f1f8e9;
+            --cell-same-num: #dbeafe;
+            --cell-given: #111111;
+            --cell-user: #2563eb;
+            --cell-correct: #16a34a;
+            --cell-error: #dc2626;
+            --primary-btn: #3b82f6;
+            --primary-btn-hover: #2563eb;
+            --btn-text: #ffffff;
+            --active-sticky: #93c5fd;
+            --note-highlight-color: #2563eb;
+        }
 
-    <!-- SUDOKU VIEW (Your Existing Game) -->
-    <div class="game-view active" id="sudokuView">
-        <header>
-            <h1>Sudoku</h1>
-            <div class="controls-top">
-                <select id="difficultySelect" class="btn-secondary">
-                    <option value="easy">Easy</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="hard">Hard</option>
-                    <option value="expert">Expert</option>
-                </select>
-                <button class="btn-secondary" id="optionsBtn" title="Options">⚙️</button>
-                <button class="btn-secondary" id="newGameBtn">New Game</button>
-                <button class="btn-secondary" id="themeToggleBtn">🌙</button>
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #444444;
+            --thick-border-color: #888888;
+            --cell-selected: #1e3a8a;
+            --cell-highlight: #14532d;
+            --cell-same-num: #1e293b;
+            --cell-given: #ffffff;
+            --cell-user: #60a5fa;
+            --cell-correct: #4ade80;
+            --cell-error: #f87171;
+            --primary-btn: #2563eb;
+            --primary-btn-hover: #1d4ed8;
+            --btn-text: #ffffff;
+            --active-sticky: #1d4ed8;
+            --note-highlight-color: #60a5fa;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        /* Game Navigation Switcher */
+        .game-nav {
+            display: flex;
+            width: 100%;
+            background-color: var(--border-color);
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 18px;
+            gap: 3px;
+        }
+
+        .nav-tab {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 8px 0;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .nav-tab.active {
+            background-color: var(--card-bg);
+            color: var(--primary-btn);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Multi-View Controller */
+        .game-view {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-view.active {
+            display: flex;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .controls-top {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .btn-secondary, select.btn-secondary {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            background-color: var(--card-bg);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .mode-toggle {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .mode-toggle.note-active {
+            background-color: #f59e0b;
+            color: #ffffff;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        /* Sudoku Grid Styling */
+        .sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(9, 1fr);
+            width: 360px;
+            height: 360px;
+            border: 3px solid var(--thick-border-color);
+            background-color: var(--thick-border-color);
+            gap: 1px;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            background-color: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        .cell:nth-child(3n) {
+            border-right: 2px solid var(--thick-border-color);
+        }
+        .cell:nth-child(9n) {
+            border-right: none;
+        }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid var(--thick-border-color);
+        }
+
+        .cell.given {
+            color: var(--cell-given);
+            font-weight: 700;
+        }
+
+        .cell.user-correct {
+            color: var(--cell-correct);
+        }
+
+        .cell.user-error {
+            color: var(--cell-error);
+        }
+
+        .cell.highlight {
+            background-color: var(--cell-highlight);
+        }
+
+        .cell.same-num {
+            background-color: var(--cell-same-num);
+        }
+
+        .cell.selected {
+            background-color: var(--cell-selected);
+            outline: 2px solid var(--primary-btn);
+            z-index: 2;
+        }
+
+        /* Mini-grid for Notes */
+        .cell-notes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .note-item {
+            font-size: 0.55rem;
+            font-weight: 500;
+            color: var(--text-color);
+            opacity: 0.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .note-item.highlight-note {
+            color: var(--note-highlight-color);
+            font-weight: 800;
+            opacity: 1;
+        }
+
+        /* Number Pad Styling */
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 6px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .num-btn {
+            background-color: var(--primary-btn);
+            color: var(--btn-text);
+            border: none;
+            padding: 10px 0;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .num-btn:hover {
+            background-color: var(--primary-btn-hover);
+        }
+
+        .num-btn.active-sticky {
+            outline: 3px solid #1e40af;
+            background-color: var(--active-sticky);
+            color: #111111;
+        }
+
+        .num-btn:disabled {
+            background-color: var(--border-color);
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Options Modal Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            padding: 24px;
+            border-radius: 12px;
+            width: 320px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .modal-close-btn {
+            margin-top: 16px;
+            width: 100%;
+            background-color: var(--primary-btn);
+            color: var(--btn-text);
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* History Log Panel */
+        .history-section {
+            width: 100%;
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+            font-size: 0.85rem;
+        }
+
+        .history-section h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+        }
+
+        .history-list {
+            max-height: 90px;
+            overflow-y: auto;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Top Game Navigation Tabs -->
+        <nav class="game-nav">
+            <button class="nav-tab active" data-game="sudoku">Sudoku</button>
+            <button class="nav-tab" data-game="tango">Tango</button>
+            <button class="nav-tab" data-game="queens">Queens</button>
+        </nav>
+
+        <!-- SUDOKU VIEW -->
+        <div class="game-view active" id="sudokuView">
+            <header>
+                <h1>Sudoku</h1>
+                <div class="controls-top">
+                    <select id="difficultySelect" class="btn-secondary">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                        <option value="expert">Expert</option>
+                    </select>
+                    <button class="btn-secondary" id="optionsBtn" title="Options">⚙️</button>
+                    <button class="btn-secondary" id="newGameBtn">New Game</button>
+                    <button class="btn-secondary" id="themeToggleBtn">🌙</button>
+                </div>
+            </header>
+
+            <div class="toolbar">
+                <button class="mode-toggle" id="modeToggleBtn">Mode: Fill</button>
+                <div class="action-group">
+                    <button class="btn-secondary" id="undoBtn">↩️ Undo</button>
+                    <button class="btn-secondary" id="redoBtn">↪️ Redo</button>
+                </div>
             </div>
-        </header>
 
-        <div class="toolbar">
-            <button class="mode-toggle" id="modeToggleBtn">Mode: Fill</button>
-            <div class="action-group">
-                <button class="btn-secondary" id="undoBtn">↩️ Undo</button>
-                <button class="btn-secondary" id="redoBtn">↪️ Redo</button>
+            <div class="game-info">
+                <span id="difficultyDisplay">Difficulty: Medium</span>
+                <span id="timerDisplay">Time: 00:00</span>
+            </div>
+
+            <div class="sudoku-board" id="sudokuBoard"></div>
+            <div class="number-pad" id="numberPad"></div>
+
+            <div class="history-section">
+                <h3>Completed Games History</h3>
+                <ul class="history-list" id="historyList">
+                    <li style="color: var(--border-color); font-style: italic;">No completed games yet.</li>
+                </ul>
             </div>
         </div>
 
-        <div class="game-info">
-            <span id="difficultyDisplay">Difficulty: Medium</span>
-            <span id="timerDisplay">Time: 00:00</span>
+        <!-- TANGO VIEW -->
+        <div class="game-view" id="tangoView">
+            <header>
+                <h1>Tango (☀️ / 🌙)</h1>
+                <div class="controls-top">
+                    <select id="tangoDifficultySelect" class="btn-secondary">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                    <button class="btn-secondary" id="tangoNewGameBtn">New Game</button>
+                </div>
+            </header>
+            <div class="game-info">
+                <span id="tangoDiffDisplay">Difficulty: Medium</span>
+                <span id="tangoTimerDisplay">Time: 00:00</span>
+            </div>
+            <div class="tango-board" id="tangoBoard" style="margin: 40px 0; text-align: center; color: var(--border-color);">
+                [ Tango Generator & UI Ready for Code Implementation ]
+            </div>
         </div>
 
-        <div class="sudoku-board" id="sudokuBoard"></div>
-        <div class="number-pad" id="numberPad"></div>
-
-        <div class="history-section">
-            <h3>Completed Games History</h3>
-            <ul class="history-list" id="historyList">
-                <li style="color: var(--border-color); font-style: italic;">No completed games yet.</li>
-            </ul>
+        <!-- QUEENS VIEW -->
+        <div class="game-view" id="queensView">
+            <header>
+                <h1>Queens 👑</h1>
+                <div class="controls-top">
+                    <select id="queensDifficultySelect" class="btn-secondary">
+                        <option value="easy">Easy (6x6)</option>
+                        <option value="medium" selected>Medium (8x8)</option>
+                        <option value="hard">Hard (9x9)</option>
+                    </select>
+                    <button class="btn-secondary" id="queensNewGameBtn">New Game</button>
+                </div>
+            </header>
+            <div class="game-info">
+                <span id="queensDiffDisplay">Difficulty: Medium (8x8)</span>
+                <span id="queensTimerDisplay">Time: 00:00</span>
+            </div>
+            <div class="queens-board" id="queensBoard" style="margin: 40px 0; text-align: center; color: var(--border-color);">
+                [ Queens Generator & UI Ready for Code Implementation ]
+            </div>
         </div>
     </div>
 
-    <!-- TANGO VIEW (Placeholder for next step) -->
-    <div class="game-view" id="tangoView">
-        <header>
-            <h1>Tango (☀️ / 🌙)</h1>
-            <div class="controls-top">
-                <select id="tangoDifficultySelect" class="btn-secondary">
-                    <option value="easy">Easy</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="hard">Hard</option>
-                </select>
-                <button class="btn-secondary" id="tangoNewGameBtn">New Game</button>
+    <!-- Options Modal -->
+    <div class="modal-overlay" id="optionsModal">
+        <div class="modal-content">
+            <h2>Game Options</h2>
+            <div class="setting-item">
+                <label for="toggleSameNum">Highlight Same Numbers</label>
+                <input type="checkbox" id="toggleSameNum" checked>
             </div>
-        </header>
-        <div class="game-info">
-            <span>Difficulty: Medium</span>
-            <span id="tangoTimerDisplay">Time: 00:00</span>
-        </div>
-        <div class="tango-board" id="tangoBoard" style="margin: 40px 0; text-align: center; color: var(--border-color);">
-            [ Tango Board Coming Up Next ]
+            <div class="setting-item">
+                <label for="toggleNoteHighlight">Highlight Matching Notes</label>
+                <input type="checkbox" id="toggleNoteHighlight" checked>
+            </div>
+            <button class="modal-close-btn" id="closeModalBtn">Save & Close</button>
         </div>
     </div>
 
-    <!-- QUEENS VIEW (Placeholder for next step) -->
-    <div class="game-view" id="queensView">
-        <header>
-            <h1>Queens 👑</h1>
-            <div class="controls-top">
-                <select id="queensDifficultySelect" class="btn-secondary">
-                    <option value="easy">Easy (6x6)</option>
-                    <option value="medium" selected>Medium (8x8)</option>
-                    <option value="hard">Hard (9x9)</option>
-                </select>
-                <button class="btn-secondary" id="queensNewGameBtn">New Game</button>
-            </div>
-        </header>
-        <div class="game-info">
-            <span>Difficulty: Medium</span>
-            <span id="queensTimerDisplay">Time: 00:00</span>
-        </div>
-        <div class="queens-board" id="queensBoard" style="margin: 40px 0; text-align: center; color: var(--border-color);">
-            [ Queens Board Coming Up Next ]
-        </div>
-    </div>
-</div>
+    <script>
+        // Game View Switcher Router Logic
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const gameViews = document.querySelectorAll('.game-view');
+
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetGame = tab.dataset.game;
+
+                navTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                gameViews.forEach(view => view.classList.remove('active'));
+                document.getElementById(`${targetGame}View`).classList.add('active');
+            });
+        });
+
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const modeToggleBtn = document.getElementById('modeToggleBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const difficultySelect = document.getElementById('difficultySelect');
+        const optionsBtn = document.getElementById('optionsBtn');
+        const optionsModal = document.getElementById('optionsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const toggleSameNum = document.getElementById('toggleSameNum');
+        const toggleNoteHighlight = document.getElementById('toggleNoteHighlight');
+        const htmlElement = document.documentElement;
+
+        // Settings State
+        let settings = {
+            highlightSameNum: true,
+            highlightNotes: true
+        };
+
+        const savedSettings = localStorage.getItem('sudoku_settings');
+        if (savedSettings) {
+            try {
+                settings = JSON.parse(savedSettings);
+                toggleSameNum.checked = settings.highlightSameNum;
+                toggleNoteHighlight.checked = settings.highlightNotes;
+            } catch (e) {}
+        }
+
+        optionsBtn.addEventListener('click', () => optionsModal.classList.add('open'));
+        closeModalBtn.addEventListener('click', () => {
+            settings.highlightSameNum = toggleSameNum.checked;
+            settings.highlightNotes = toggleNoteHighlight.checked;
+            localStorage.setItem('sudoku_settings', JSON.stringify(settings));
+            optionsModal.classList.remove('open');
+            if (selectedCellIndex !== null) selectCellPath(selectedCellIndex);
+        });
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            htmlElement.setAttribute('data-theme', newTheme);
+            themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        });
+
+        // Game State Variables
+        let boardData = Array(81).fill(0);
+        let givensMask = Array(81).fill(false);
+        let notesData = Array(81).fill(null).map(() => new Set());
+        let solutionData = Array(81).fill(0);
+        let currentDifficulty = 'medium';
+        let selectedCellIndex = null;
+        let activeStickyNumber = null;
+        let inputMode = 'fill';
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let isGameWon = false;
+
+        let undoStack = [];
+        let redoStack = [];
+
+        const boardElement = document.getElementById('sudokuBoard');
+        const numberPadElement = document.getElementById('numberPad');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const difficultyDisplay = document.getElementById('difficultyDisplay');
+        const historyListElement = document.getElementById('historyList');
+
+        modeToggleBtn.addEventListener('click', () => {
+            inputMode = inputMode === 'fill' ? 'note' : 'fill';
+            if (inputMode === 'note') {
+                modeToggleBtn.textContent = "Mode: Notes ✏️";
+                modeToggleBtn.classList.add('note-active');
+            } else {
+                modeToggleBtn.textContent = "Mode: Fill 🔢";
+                modeToggleBtn.classList.remove('note-active');
+            }
+        });
+
+        for (let i = 0; i < 81; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.dataset.index = i;
+            cell.addEventListener('click', () => handleCellClick(i));
+            boardElement.appendChild(cell);
+        }
+
+        for (let i = 1; i <= 9; i++) {
+            const btn = document.createElement('button');
+            btn.classList.add('num-btn');
+            btn.dataset.num = i;
+            btn.textContent = i;
+            btn.addEventListener('click', () => handleNumberPadClick(i));
+            numberPadElement.appendChild(btn);
+        }
+
+        function startTimer(seconds = 0) {
+            clearInterval(timerInterval);
+            timerSeconds = seconds;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                if (!isGameWon) {
+                    timerSeconds++;
+                    updateTimerDisplay();
+                    saveActiveGame();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+            const secs = String(timerSeconds % 60).padStart(2, '0');
+            timerDisplay.textContent = `Time: ${mins}:${secs}`;
+        }
+
+        function saveStateSnapshot() {
+            const snapshot = {
+                board: [...boardData],
+                notes: notesData.map(set => [...set])
+            };
+            undoStack.push(snapshot);
+            redoStack = [];
+        }
+
+        undoBtn.addEventListener('click', () => {
+            if (undoStack.length === 0 || isGameWon) return;
+            const currentSnapshot = {
+                board: [...boardData],
+                notes: notesData.map(set => [...set])
+            };
+            redoStack.push(currentSnapshot);
+
+            const prevSnapshot = undoStack.pop();
+            boardData = [...prevSnapshot.board];
+            notesData = prevSnapshot.notes.map(arr => new Set(arr));
+            renderBoard();
+            saveActiveGame();
+        });
+
+        redoBtn.addEventListener('click', () => {
+            if (redoStack.length === 0 || isGameWon) return;
+            const currentSnapshot = {
+                board: [...boardData],
+                notes: notesData.map(set => [...set])
+            };
+            undoStack.push(currentSnapshot);
+
+            const nextSnapshot = redoStack.pop();
+            boardData = [...nextSnapshot.board];
+            notesData = nextSnapshot.notes.map(arr => new Set(arr));
+            renderBoard();
+            saveActiveGame();
+        });
+
+        async function fetchNewPuzzle(difficulty = 'medium') {
+            currentDifficulty = difficulty;
+            difficultySelect.value = difficulty;
+            difficultyDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+            isGameWon = false;
+            undoStack = [];
+            redoStack = [];
+            activeStickyNumber = null;
+            loadMockPuzzle();
+        }
+
+        function loadMockPuzzle() {
+            const mock = [
+                5,3,0,0,7,0,0,0,0,
+                6,0,0,1,9,5,0,0,0,
+                0,9,8,0,0,0,0,6,0,
+                8,0,0,0,6,0,0,0,3,
+                4,0,0,8,0,3,0,0,1,
+                7,0,0,0,2,0,0,0,6,
+                0,6,0,0,0,0,2,8,0,
+                0,0,0,4,1,9,0,0,5,
+                0,0,0,0,8,0,0,7,9
+            ];
+            boardData = [...mock];
+            givensMask = mock.map(val => val !== 0);
+            solutionData = [...mock];
+            notesData = Array(81).fill(null).map(() => new Set());
+            renderBoard();
+            startTimer(0);
+            saveActiveGame();
+        }
+
+        function renderBoard() {
+            const cells = boardElement.children;
+            for (let i = 0; i < 81; i++) {
+                const cell = cells[i];
+                const val = boardData[i];
+                cell.innerHTML = '';
+
+                cell.classList.remove('given', 'user-correct', 'user-error');
+
+                if (val !== 0) {
+                    cell.textContent = val;
+                    if (givensMask[i]) {
+                        cell.classList.add('given');
+                    } else {
+                        if (solutionData[i] && solutionData[i] !== 0) {
+                            if (val === solutionData[i]) {
+                                cell.classList.add('user-correct');
+                            } else {
+                                cell.classList.add('user-error');
+                            }
+                        }
+                    }
+                } else {
+                    if (notesData[i].size > 0) {
+                        const notesContainer = document.createElement('div');
+                        notesContainer.classList.add('cell-notes');
+                        
+                        const selectedVal = selectedCellIndex !== null ? boardData[selectedCellIndex] : null;
+                        
+                        for (let n = 1; n <= 9; n++) {
+                            const noteItem = document.createElement('div');
+                            noteItem.classList.add('note-item');
+                            if (notesData[i].has(n)) {
+                                noteItem.textContent = n;
+                                if (settings.highlightNotes && selectedVal !== null && n === selectedVal) {
+                                    noteItem.classList.add('highlight-note');
+                                }
+                            }
+                            notesContainer.appendChild(noteItem);
+                        }
+                        cell.appendChild(notesContainer);
+                    }
+                }
+            }
+            updateNumberPadUI();
+            checkWinCondition();
+        }
+
+        function updateNumberPadUI() {
+            const counts = Array(10).fill(0);
+            for (let val of boardData) {
+                if (val >= 1 && val <= 9) counts[val]++;
+            }
+
+            for (let btn of numberPadElement.children) {
+                const num = parseInt(btn.dataset.num);
+                if (activeStickyNumber === num) {
+                    btn.classList.add('active-sticky');
+                } else {
+                    btn.classList.remove('active-sticky');
+                }
+
+                if (counts[num] >= 9) {
+                    btn.disabled = true;
+                    if (activeStickyNumber === num) activeStickyNumber = null;
+                } else {
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        function handleCellClick(index) {
+            if (isGameWon) return;
+            selectCellPath(index);
+            if (activeStickyNumber !== null) {
+                applyNumberToCell(index, activeStickyNumber);
+            }
+        }
+
+        function selectCellPath(index) {
+            const cells = boardElement.children;
+            for (let i = 0; i < 81; i++) {
+                cells[i].classList.remove('selected', 'highlight', 'same-num');
+            }
+            
+            selectedCellIndex = index;
+            cells[index].classList.add('selected');
+
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            const boxRow = Math.floor(row / 3);
+            const boxCol = Math.floor(col / 3);
+            const selectedVal = boardData[index];
+
+            for (let i = 0; i < 81; i++) {
+                if (i === index) continue;
+                const r = Math.floor(i / 9);
+                const c = i % 9;
+                const br = Math.floor(r / 3);
+                const bc = Math.floor(c / 3);
+
+                if (r === row || c === col || (br === boxRow && bc === boxCol)) {
+                    cells[i].classList.add('highlight');
+                }
+
+                if (settings.highlightSameNum && selectedVal !== 0 && boardData[i] === selectedVal) {
+                    cells[i].classList.add('same-num');
+                }
+            }
+        }
+
+        function handleNumberPadClick(num) {
+            if (isGameWon) return;
+            if (activeStickyNumber === num) {
+                activeStickyNumber = null;
+            } else {
+                activeStickyNumber = num;
+            }
+            updateNumberPadUI();
+
+            if (selectedCellIndex !== null && activeStickyNumber !== null) {
+                applyNumberToCell(selectedCellIndex, activeStickyNumber);
+            }
+        }
+
+        function applyNumberToCell(index, num) {
+            if (givensMask[index]) return;
+
+            saveStateSnapshot();
+
+            if (inputMode === 'fill') {
+                if (boardData[index] === num) {
+                    boardData[index] = 0;
+                } else {
+                    boardData[index] = num;
+                    notesData[index].clear();
+
+                    const row = Math.floor(index / 9);
+                    const col = index % 9;
+                    const boxRow = Math.floor(row / 3);
+                    const boxCol = Math.floor(col / 3);
+
+                    for (let i = 0; i < 81; i++) {
+                        const r = Math.floor(i / 9);
+                        const c = i % 9;
+                        const br = Math.floor(r / 3);
+                        const bc = Math.floor(c / 3);
+
+                        if (r === row || c === col || (br === boxRow && bc === boxCol)) {
+                            if (boardData[i] === 0 && notesData[i].has(num)) {
+                                notesData[i].delete(num);
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (boardData[index] !== 0) return;
+                if (notesData[index].has(num)) {
+                    notesData[index].delete(num);
+                } else {
+                    notesData[index].add(num);
+                }
+            }
+
+            renderBoard();
+            if (selectedCellIndex !== null) selectCellPath(selectedCellIndex);
+            saveActiveGame();
+        }
+
+        function checkWinCondition() {
+            if (isGameWon) return;
+            const isFull = boardData.every(val => val !== 0);
+            if (!isFull) return;
+
+            const matches = boardData.every((val, i) => val === solutionData[i]);
+            if (matches) {
+                isGameWon = true;
+                clearInterval(timerInterval);
+                recordGameHistory();
+                localStorage.removeItem('sudoku_active_game');
+                alert(`🎉 Puzzle Completed Successfully in ${timerDisplay.textContent.replace('Time: ', '')}!`);
+            }
+        }
+
+        function saveActiveGame() {
+            if (isGameWon) return;
+            const gameState = {
+                boardData,
+                givensMask,
+                notesData: notesData.map(set => [...set]),
+                solutionData,
+                currentDifficulty,
+                timerSeconds
+            };
+            localStorage.setItem('sudoku_active_game', JSON.stringify(gameState));
+        }
+
+        function loadActiveGame() {
+            const saved = localStorage.getItem('sudoku_active_game');
+            if (!saved) return false;
+            try {
+                const state = JSON.parse(saved);
+                boardData = state.boardData;
+                givensMask = state.givensMask;
+                notesData = state.notesData.map(arr => new Set(arr));
+                solutionData = state.solutionData;
+                currentDifficulty = state.currentDifficulty || 'medium';
+                difficultySelect.value = currentDifficulty;
+                difficultyDisplay.textContent = `Difficulty: ${currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}`;
+                renderBoard();
+                startTimer(state.timerSeconds || 0);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function recordGameHistory() {
+            const history = JSON.parse(localStorage.getItem('sudoku_history') || '[]');
+            history.unshift({
+                difficulty: currentDifficulty,
+                time: timerDisplay.textContent.replace('Time: ', ''),
+                date: new Date().toLocaleDateString()
+            });
+            localStorage.setItem('sudoku_history', JSON.stringify(history.slice(0, 10)));
+            renderHistoryLog();
+        }
+
+        function renderHistoryLog() {
+            const history = JSON.parse(localStorage.getItem('sudoku_history') || '[]');
+            if (history.length === 0) {
+                historyListElement.innerHTML = `<li style="color: var(--border-color); font-style: italic;">No completed games yet.</li>`;
+                return;
+            }
+            historyListElement.innerHTML = history.map(item => `
+                <li>
+                    <span><strong>${item.difficulty.toUpperCase()}</strong> (${item.date})</span>
+                    <span>⏱️ ${item.time}</span>
+                </li>
+            `).join('');
+        }
+
+        document.getElementById('newGameBtn').addEventListener('click', () => {
+            if (confirm("Start a new game? Current progress will be reset.")) {
+                const selectedDiff = difficultySelect.value;
+                fetchNewPuzzle(selectedDiff);
+            }
+        });
+
+        renderHistoryLog();
+        if (!loadActiveGame()) {
+            fetchNewPuzzle('medium');
+        }
+    </script>
+</body>
+</html>

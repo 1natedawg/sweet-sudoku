@@ -163,4 +163,4 @@ function generateServerQueens(size) {
     }
 
     return { size, board, regions };
-} s
+}

@@ -67,7 +67,7 @@ async function fetchTangoPuzzle() {
         if (response.status === 304) {
             throw new Error('The server returned 304 Not Modified without a puzzle body.');
         }
-
+        console.log(`Received response: HTTP ${response.status}`);
         let responseData = {};
         try {
             responseData = await response.json();

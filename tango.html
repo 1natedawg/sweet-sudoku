@@ -150,7 +150,7 @@ function renderConnectors() {
             // conn contains {r, c, type} where type: 1 = '×', 2 = '=' (or string equivalent)
             const el = document.createElement('div');
             el.classList.add('connector');
-            el.textContent = conn.type === '=' || conn.type === 2 ? '=' : '×';
+            el.textContent = conn.type === '=' || conn.type === 2 ? '=' : 'x';
             
             // Calculate pixel position between cell (r, c) and (r, c+1)
             const left = (conn.c + 1) * cellSize + (conn.c * gap) - 4;
@@ -167,7 +167,7 @@ function renderConnectors() {
         puzzleData.verticalConnectors.forEach(conn => {
             const el = document.createElement('div');
             el.classList.add('connector');
-            el.textContent = conn.type === '=' || conn.type === 2 ? '=' : '×';
+            el.textContent = conn.type === '=' || conn.type === 2 ? '=' : 'x';
             
             const left = conn.c * (cellSize + gap) + (cellSize / 2) - 10;
             const top = (conn.r + 1) * cellSize + (conn.r * gap) - 4;
@@ -180,8 +180,11 @@ function renderConnectors() {
 }
 
 function checkWinCondition() {
-    if (!puzzleData || !puzzleData.solution) return;
-    
+    if (!puzzleData || !puzzleData.solution){
+        console.warn('Puzzle data or solution is missing. Cannot check win condition.');
+         return;
+    }
+    console.debug('Checking win condition with current state:', currentState);
     let size = puzzleData.size;
     let isComplete = true;
     let isCorrect = true;
@@ -189,7 +192,7 @@ function checkWinCondition() {
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             let currentVal = currentState[r][c];
-            let solutionVal = puzzleData.solution[r][c] === '☀️' ? 1 : puzzleData.solution[r][c] === '🌙' ? 2 : 0;
+            let solutionVal = puzzleData.solution[r][c];
             
             if (currentVal === 0) isComplete = false;
             if (currentVal !== solutionVal) isCorrect = false;

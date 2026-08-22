@@ -58,12 +58,13 @@ async function fetchTangoPuzzle() {
     try {
         console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}, density=${density}`);
         if (window.location.protocol === 'file:') {
-            throw new Error('Tango must be opened through the site server, not as a file.');
+            console.log('Tango must be opened through the site server, not as a file.');
         }
-
+        console.log('Requesting puzzle from API...');
         const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${density}`, {
             cache: 'no-store'
         });
+        console.log('Response received from API.');
         if (response.status === 304) {
             throw new Error('The server returned 304 Not Modified without a puzzle body.');
         }

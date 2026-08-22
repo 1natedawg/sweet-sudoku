@@ -56,14 +56,26 @@ async function fetchTangoPuzzle() {
 
     try {
         console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}, density=${density}`);
-        const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${density}`);
-        puzzleData = await response.json();
+        const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${density}`, {
+            cache: 'no-store'
+        });
+        const responseText = await response.text();
+        let responseData = {};
+
+        if (responseText) {
+            try {
+                responseData = JSON.parse(responseText);
+            } catch {
+                responseData = { error: 'The server returned an invalid response.' };
+            }
+        }
         
         if (response.ok) {
+            puzzleData = responseData;
             initBoardState();
             renderBoard();
         } else {
-            console.error(puzzleData.error || 'Failed to load puzzle.');
+            console.error(responseData.error || `Failed to load puzzle (HTTP ${response.status}).`);
         }
     } catch (err) {
         console.error('Error fetching puzzle:', err);

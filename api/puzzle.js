@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     const { game = 'sudoku', difficulty = 'medium' } = req.query;
     console.log(`[API Generator] Request received for game: '${game}', difficulty: '${difficulty}'`);
 

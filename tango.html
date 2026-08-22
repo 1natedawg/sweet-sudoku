@@ -55,6 +55,7 @@ async function fetchTangoPuzzle() {
     const density = document.getElementById('densityInput').value;
 
     try {
+        console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}, density=${density}`);
         const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${density}`);
         puzzleData = await response.json();
         
@@ -62,7 +63,7 @@ async function fetchTangoPuzzle() {
             initBoardState();
             renderBoard();
         } else {
-            alert(puzzleData.error || 'Failed to load puzzle.');
+            console.error(puzzleData.error || 'Failed to load puzzle.');
         }
     } catch (err) {
         console.error('Error fetching puzzle:', err);

@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 function generateServerTango(size, difficulty, density) {
     console.log(`Server generating Tango puzzle for size ${size} with density ${density}%`);
     //horizontalConnectors, verticalConnectors, solution, size, board
-    rows = [
+    const rows = [
     [0, 1, 2, 0, 1, 2],
     [2, 0, 1, 2, 0, 1],
     [1, 2, 0, 1, 2, 0],
@@ -73,7 +73,7 @@ function generateServerTango(size, difficulty, density) {
     [2, 0, 1, 2, 0, 1],
     [1, 2, 0, 1, 2, 0]
   ];
-  solution = [
+  const solution = [
     [1, 2, 1, 2, 1, 2],
     [2, 1, 2, 1, 2, 1],
     [1, 2, 1, 2, 1, 2],
@@ -81,11 +81,11 @@ function generateServerTango(size, difficulty, density) {
     [1, 2, 1, 2, 1, 2],
     [2, 1, 2, 1, 2, 1]
   ];
-  horizontalConnectors = [
+  const horizontalConnectors = [
     { "r": 0, "c": 0, "type": "=" },
     { "r": 0, "c": 1, "type": "x" }
   ];
-  verticalConnectors = [
+  const verticalConnectors = [
     { "r": 0, "c": 0, "type": "x" },
     { "r": 1, "c": 0, "type": "=" }
   ];

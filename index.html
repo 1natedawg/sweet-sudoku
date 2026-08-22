@@ -91,6 +91,8 @@
             border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.2s, color 0.2s;
+            text-decoration: none;
+            text-align: center;
         }
 
         .nav-tab.active {
@@ -175,6 +177,7 @@
 
         .game-info {
             display: flex;
+            justify-content: space-width;
             justify-content: space-between;
             width: 100%;
             margin-bottom: 12px;
@@ -277,127 +280,6 @@
             cursor: not-allowed;
         }
 
-        /* Tango Strict Inline Grid Architecture */
-        .tango-board-container {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            overflow-x: auto;
-            margin: 10px 0 20px 0;
-        }
-
-        .tango-wrapper {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .tango-board {
-            display: grid;
-            gap: 1px;
-            background-color: var(--thick-border-color);
-            border: 2px solid var(--thick-border-color);
-            padding: 1px;
-            border-radius: 4px;
-        }
-
-        .tango-cell {
-            background-color: var(--card-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            cursor: pointer;
-            user-select: none;
-            position: relative;
-        }
-
-        .tango-cell.given {
-            font-weight: bold;
-            color: var(--cell-given);
-        }
-
-        .tango-cell.error {
-            background-color: #fee2e2 !important;
-            color: var(--cell-error);
-        }
-        [data-theme="dark"] .tango-cell.error {
-            background-color: #450a0a !important;
-            color: var(--cell-error);
-        }
-
-        /* Inline Border Constraint Badges Overlay */
-        .tango-constraint-h {
-            position: absolute;
-            right: -8px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
-            background-color: var(--card-bg);
-            color: var(--primary-btn);
-            font-size: 0.65rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            border: 1px solid var(--border-color);
-            z-index: 5;
-            pointer-events: none;
-        }
-
-        .tango-constraint-v {
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 16px;
-            height: 16px;
-            background-color: var(--card-bg);
-            color: var(--primary-btn);
-            font-size: 0.65rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            border: 1px solid var(--border-color);
-            z-index: 5;
-            pointer-events: none;
-        }
-
-        .tango-counters-col {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-
-        .tango-counter {
-            height: 42px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: bold;
-            padding: 0 6px;
-            gap: 2px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            white-space: nowrap;
-        }
-
-        .counter-balanced {
-            color: #94a3b8;
-            text-decoration: line-through;
-        }
-
-        .counter-over {
-            color: #ef4444;
-            font-weight: 800;
-        }
-
         .modal-overlay {
             position: fixed;
             top: 0; left: 0;
@@ -428,9 +310,6 @@
             margin-bottom: 12px;
             font-size: 0.95rem;
         }
-        .setting-item input[type="range"] {
-            width: 100px;
-        }
 
         .modal-close-btn {
             margin-top: 16px; width: 100%;
@@ -456,6 +335,7 @@
         }
         .history-list li {
             display: flex;
+            justify-content: space-width;
             justify-content: space-between;
             padding: 4px 0;
             border-bottom: 1px dashed var(--border-color);
@@ -465,10 +345,10 @@
 <body>
 
     <div class="container">
+        <!-- Unified Top Nav Game Picker -->
         <nav class="game-nav">
-            <button class="nav-tab active" data-game="sudoku">Sudoku</button>
-            <button class="nav-tab" data-game="tango">Tango</button>
-            <button class="nav-tab" data-game="queens">Queens</button>
+            <a href="index.html" class="nav-tab active">Sudoku</a>
+            <a href="tango.html" class="nav-tab">Tango</a>
         </nav>
 
         <!-- SUDOKU VIEW -->
@@ -483,6 +363,7 @@
                     </select>
                     <button class="btn-secondary" id="optionsBtn" title="Options">⚙️</button>
                     <button class="btn-secondary" id="newGameBtn">New Game</button>
+                    <button class="btn-secondary" id="hintBtn" title="Fill one correct cell">Hint</button>
                     <button class="btn-secondary" id="themeToggleBtn">🌙</button>
                 </div>
             </header>
@@ -510,60 +391,6 @@
                 </ul>
             </div>
         </div>
-
-        <!-- TANGO VIEW -->
-        <div class="game-view" id="tangoView">
-            <header>
-                <h1>Tango (☀️ / 🌙)</h1>
-                <div class="controls-top">
-                    <select id="tangoSizeSelect" class="btn-secondary">
-                        <option value="6" selected>6x6</option>
-                        <option value="8">8x8</option>
-                        <option value="10">10x10</option>
-                        <option value="12">12x12</option>
-                        <option value="14">14x14</option>
-                    </select>
-                    <select id="tangoDifficultySelect" class="btn-secondary">
-                        <option value="easy">Easy</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="hard">Hard</option>
-                    </select>
-                    <button class="btn-secondary" id="tangoNewGameBtn">New Game</button>
-                </div>
-            </header>
-            <div class="game-info">
-                <span id="tangoDiffDisplay">Difficulty: Medium</span>
-                <span id="tangoTimerDisplay">Time: 00:00</span>
-            </div>
-            <div class="tango-board-container">
-                <div class="tango-wrapper">
-                    <div class="tango-board" id="tangoBoard"></div>
-                    <div class="tango-counters-col" id="tangoCountersCol"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- QUEENS VIEW -->
-        <div class="game-view" id="queensView">
-            <header>
-                <h1>Queens 👑</h1>
-                <div class="controls-top">
-                    <select id="queensDifficultySelect" class="btn-secondary">
-                        <option value="easy">Easy (6x6)</option>
-                        <option value="medium" selected>Medium (8x8)</option>
-                        <option value="hard">Hard (9x9)</option>
-                    </select>
-                    <button class="btn-secondary" id="queensNewGameBtn">New Game</button>
-                </div>
-            </header>
-            <div class="game-info">
-                <span id="queensDiffDisplay">Difficulty: Medium (8x8)</span>
-                <span id="queensTimerDisplay">Time: 00:00</span>
-            </div>
-            <div class="queens-board" id="queensBoard" style="margin: 40px 0; text-align: center; color: var(--border-color);">
-                [ Queens Generator & UI Ready for Code Implementation ]
-            </div>
-        </div>
     </div>
 
     <!-- Options Modal -->
@@ -578,91 +405,53 @@
                 <label for="toggleNoteHighlight">Highlight Matching Notes</label>
                 <input type="checkbox" id="toggleNoteHighlight" checked>
             </div>
-            <div class="setting-item">
-                <label for="toggleTangoErrors">Highlight Tango Errors</label>
-                <input type="checkbox" id="toggleTangoErrors" checked>
-            </div>
-            <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                <div style="display: flex; justify-content: space-width; width: 100%;">
-                    <label for="tangoDensitySlider">Tango Symbol Density</label>
-                    <span id="tangoDensityVal">30%</span>
-                </div>
-                <input type="range" id="tangoDensitySlider" min="10" max="60" value="30" style="width: 100%;">
-            </div>
             <button class="modal-close-btn" id="closeModalBtn">Save & Close</button>
         </div>
     </div>
 
     <script>
-        const navTabs = document.querySelectorAll('.nav-tab');
-        const gameViews = document.querySelectorAll('.game-view');
-
-        navTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const targetGame = tab.dataset.game;
-                navTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                gameViews.forEach(view => view.classList.remove('active'));
-                document.getElementById(`${targetGame}View`).classList.add('active');
-            });
-        });
-
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const modeToggleBtn = document.getElementById('modeToggleBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
         const difficultySelect = document.getElementById('difficultySelect');
         const optionsBtn = document.getElementById('optionsBtn');
+        const hintBtn = document.getElementById('hintBtn');
         const optionsModal = document.getElementById('optionsModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const toggleSameNum = document.getElementById('toggleSameNum');
         const toggleNoteHighlight = document.getElementById('toggleNoteHighlight');
-        const toggleTangoErrors = document.getElementById('toggleTangoErrors');
-        const tangoDensitySlider = document.getElementById('tangoDensitySlider');
-        const tangoDensityVal = document.getElementById('tangoDensityVal');
         const htmlElement = document.documentElement;
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+            htmlElement.setAttribute('data-theme', savedTheme);
+            themeToggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        }
 
-        let settings = {
-            highlightSameNum: true,
-            highlightNotes: true,
-            highlightTangoErrors: true,
-            tangoDensity: 30
-        };
-
+        let settings = { highlightSameNum: true, highlightNotes: true };
         const savedSettings = localStorage.getItem('sudoku_settings');
         if (savedSettings) {
             try {
                 settings = JSON.parse(savedSettings);
                 toggleSameNum.checked = settings.highlightSameNum;
                 toggleNoteHighlight.checked = settings.highlightNotes;
-                if (toggleTangoErrors) toggleTangoErrors.checked = settings.highlightTangoErrors;
-                if (settings.tangoDensity !== undefined) {
-                    tangoDensitySlider.value = settings.tangoDensity;
-                    tangoDensityVal.textContent = settings.tangoDensity + '%';
-                }
             } catch (e) {}
         }
-
-        tangoDensitySlider.addEventListener('input', (e) => {
-            tangoDensityVal.textContent = e.target.value + '%';
-        });
 
         optionsBtn.addEventListener('click', () => optionsModal.classList.add('open'));
         closeModalBtn.addEventListener('click', () => {
             settings.highlightSameNum = toggleSameNum.checked;
             settings.highlightNotes = toggleNoteHighlight.checked;
-            settings.highlightTangoErrors = toggleTangoErrors.checked;
-            settings.tangoDensity = parseInt(tangoDensitySlider.value);
             localStorage.setItem('sudoku_settings', JSON.stringify(settings));
             optionsModal.classList.remove('open');
             if (selectedCellIndex !== null) selectCellPath(selectedCellIndex);
-            initTangoGame(tangoSize, tangoDifficultySelect.value);
         });
 
         themeToggleBtn.addEventListener('click', () => {
             const currentTheme = htmlElement.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             htmlElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
             themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         });
 
@@ -735,10 +524,7 @@
         }
 
         function saveStateSnapshot() {
-            undoStack.push({
-                board: [...boardData],
-                notes: notesData.map(set => [...set])
-            });
+            undoStack.push({ board: [...boardData], notes: notesData.map(set => [...set]) });
             redoStack = [];
         }
 
@@ -944,6 +730,20 @@
             }
         }
 
+        function giveSudokuHint() {
+            if (isGameWon) return;
+            const emptyIndex = boardData.findIndex((value, index) => value === 0 && !givensMask[index]);
+            if (emptyIndex === -1) return;
+            saveStateSnapshot();
+            boardData[emptyIndex] = solutionData[emptyIndex];
+            notesData[emptyIndex].clear();
+            console.debug(`[Sudoku Hint] Filled cell ${emptyIndex} with the solution value.`);
+            renderBoard();
+            saveActiveGame();
+        }
+
+        hintBtn.addEventListener('click', giveSudokuHint);
+
         function saveActiveGame() {
             if (isGameWon) return;
             localStorage.setItem('sudoku_active_game', JSON.stringify({
@@ -994,214 +794,10 @@
             if (confirm("Start a new game? Current progress will be reset.")) fetchNewPuzzle(difficultySelect.value);
         });
 
-        // ==========================================
-        // TANGO GAME MODULE (SCALED DENSITY LOGIC)
-        // ==========================================
-        const tangoBoardElement = document.getElementById('tangoBoard');
-        const tangoCountersColElement = document.getElementById('tangoCountersCol');
-        const tangoTimerDisplay = document.getElementById('tangoTimerDisplay');
-        const tangoDiffDisplay = document.getElementById('tangoDiffDisplay');
-        const tangoDifficultySelect = document.getElementById('tangoDifficultySelect');
-        const tangoSizeSelect = document.getElementById('tangoSizeSelect');
-        const tangoNewGameBtn = document.getElementById('tangoNewGameBtn');
-
-        let tangoSize = 6;
-        let tangoBoardData = [];
-        let tangoGivens = [];
-        let tangoSolution = [];
-        let tangoConstraints = { horizontal: [], vertical: [] };
-        let tangoTimerSeconds = 0;
-        let tangoTimerInterval = null;
-        let tangoIsWon = false;
-
-        function startTangoTimer(seconds = 0) {
-            clearInterval(tangoTimerInterval);
-            tangoTimerSeconds = seconds;
-            updateTangoTimerDisplay();
-            tangoTimerInterval = setInterval(() => {
-                if (!tangoIsWon) {
-                    tangoTimerSeconds++;
-                    updateTangoTimerDisplay();
-                }
-            }, 1000);
-        }
-
-        function updateTangoTimerDisplay() {
-            const mins = String(Math.floor(tangoTimerSeconds / 60)).padStart(2, '0');
-            const secs = String(tangoTimerSeconds % 60).padStart(2, '0');
-            tangoTimerDisplay.textContent = `Time: ${mins}:${secs}`;
-        }
-
-        async function initTangoGame(size = 6, difficulty = 'medium') {
-    tangoSize = size;
-    tangoIsWon = false;
-    tangoDiffDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
-    
-    try {
-        console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}, density=${settings.tangoDensity}`);
-        const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${settings.tangoDensity}`);
-        const data = await response.json();
-        
-        if (response.ok && data.board) {
-            tangoSize = data.size;
-            tangoBoardData = [...data.board];
-            tangoGivens = [...data.givens];
-            tangoSolution = [...data.solution];
-            tangoConstraints = data.constraints || { horizontal: [], vertical: [] };
-            
-            renderTangoBoard();
-            startTangoTimer(0);
-            return;
-        }
-    } catch (err) {
-        console.error("Failed to fetch server-side Tango puzzle:", err);
-    }
-    
-    // Fallback if fetch fails
-    tangoBoardData = Array(size * size).fill('');
-    tangoGivens = Array(size * size).fill(false);
-    tangoConstraints = { horizontal: [], vertical: [] };
-    renderTangoBoard();
-}
-
-        function getTangoErrors() {
-            let errors = Array(tangoSize * tangoSize).fill(false);
-            if (!settings.highlightTangoErrors) return errors;
-
-            for (let r = 0; r < tangoSize; r++) {
-                for (let c = 0; c < tangoSize; c++) {
-                    let idx = r * tangoSize + c;
-                    let val = tangoBoardData[idx];
-                    if (!val) continue;
-
-                    if (c <= tangoSize - 3 && val === tangoBoardData[r * tangoSize + c + 1] && val === tangoBoardData[r * tangoSize + c + 2]) {
-                        errors[idx] = true; errors[r * tangoSize + c + 1] = true; errors[r * tangoSize + c + 2] = true;
-                    }
-                    if (r <= tangoSize - 3 && val === tangoBoardData[(r + 1) * tangoSize + c] && val === tangoBoardData[(r + 2) * tangoSize + c]) {
-                        errors[idx] = true; errors[(r + 1) * tangoSize + c] = true; errors[(r + 2) * tangoSize + c] = true;
-                    }
-                }
-            }
-            return errors;
-        }
-
-        function renderTangoBoard() {
-            tangoBoardElement.style.gridTemplateColumns = `repeat(${tangoSize}, 42px)`;
-            tangoBoardElement.style.gridTemplateRows = `repeat(${tangoSize}, 42px)`;
-            tangoBoardElement.innerHTML = '';
-            tangoCountersColElement.innerHTML = '';
-
-            const targetCount = tangoSize / 2;
-            const errors = getTangoErrors();
-
-            for (let r = 0; r < tangoSize; r++) {
-                let rSuns = 0, rMoons = 0;
-
-                for (let c = 0; c < tangoSize; c++) {
-                    const idx = r * tangoSize + c;
-                    const val = tangoBoardData[idx];
-                    if (val === '☀️') rSuns++;
-                    if (val === '🌙') rMoons++;
-
-                    const cell = document.createElement('div');
-                    cell.className = `tango-cell ${tangoGivens[idx] ? 'given' : ''} ${errors[idx] ? 'error' : ''}`;
-                    cell.textContent = val;
-                    cell.onclick = () => handleTangoCellClick(idx);
-
-                    if (c < tangoSize - 1) {
-                        const hConstraint = tangoConstraints.horizontal.find(h => h.r === r && h.c === c);
-                        if (hConstraint) {
-                            const badge = document.createElement('div');
-                            badge.className = 'tango-constraint-h';
-                            badge.textContent = hConstraint.type;
-                            cell.appendChild(badge);
-                        }
-                    }
-
-                    if (r < tangoSize - 1) {
-                        const vConstraint = tangoConstraints.vertical.find(v => v.r === r && v.c === c);
-                        if (vConstraint) {
-                            const badge = document.createElement('div');
-                            badge.className = 'tango-constraint-v';
-                            badge.textContent = vConstraint.type;
-                            cell.appendChild(badge);
-                        }
-                    }
-
-                    tangoBoardElement.appendChild(cell);
-                }
-
-                const counter = document.createElement('div');
-                counter.className = 'tango-counter';
-                let sunClass = rSuns > targetCount ? 'counter-over' : (rSuns === targetCount ? 'counter-balanced' : '');
-                let moonClass = rMoons > targetCount ? 'counter-over' : (rMoons === targetCount ? 'counter-balanced' : '');
-                counter.innerHTML = `<span class="${sunClass}">${rSuns}☀️</span>|<span class="${moonClass}">${rMoons}🌙</span>`;
-                tangoCountersColElement.appendChild(counter);
-            }
-
-            checkTangoWin();
-        }
-
-        function handleTangoCellClick(index) {
-            if (tangoIsWon || tangoGivens[index]) return;
-
-            const current = tangoBoardData[index];
-            if (current === '') tangoBoardData[index] = '☀️';
-            else if (current === '☀️') tangoBoardData[index] = '🌙';
-            else tangoBoardData[index] = '';
-
-            renderTangoBoard();
-        }
-
-        function checkTangoWin() {
-            if (tangoIsWon) return;
-            if (!tangoBoardData.every(val => val !== '')) return;
-
-            const errors = getTangoErrors();
-            if (errors.some(err => err)) return;
-
-            const targetCount = tangoSize / 2;
-            let valid = true;
-
-            for (let i = 0; i < tangoSize; i++) {
-                let rSuns = 0, rMoons = 0, cSuns = 0, cMoons = 0;
-                for (let j = 0; j < tangoSize; j++) {
-                    if (tangoBoardData[i * tangoSize + j] === '☀️') rSuns++;
-                    if (tangoBoardData[i * tangoSize + j] === '🌙') rMoons++;
-                    if (tangoBoardData[j * tangoSize + i] === '☀️') cSuns++;
-                    if (tangoBoardData[j * tangoSize + i] === '🌙') cMoons++;
-                }
-                if (rSuns !== targetCount || rMoons !== targetCount || cSuns !== targetCount || cMoons !== targetCount) {
-                    valid = false;
-                }
-            }
-
-            if (valid) {
-                tangoIsWon = true;
-                clearInterval(tangoTimerInterval);
-                alert(`🎉 Tango Puzzle Completed Successfully in ${tangoTimerDisplay.textContent.replace('Time: ', '')}!`);
-            }
-        }
-
-tangoNewGameBtn.addEventListener('click', () => {
-    if (confirm("Start a new Tango game? Current progress will be reset.")) {
-        initTangoGame(parseInt(tangoSizeSelect.value), tangoDifficultySelect.value);
-    }
-});
-
-tangoDifficultySelect.addEventListener('change', (e) => {
-    initTangoGame(parseInt(tangoSizeSelect.value), e.target.value);
-});
-
-tangoSizeSelect.addEventListener('change', (e) => {
-    initTangoGame(parseInt(e.target.value), tangoDifficultySelect.value);
-});
-
         renderHistoryLog();
         if (!loadActiveGame()) {
             fetchNewPuzzle('medium');
         }
-        initTangoGame(6, 'medium');
     </script>
 </body>
 </html>

@@ -49,8 +49,16 @@ export default async function handler(req, res) {
     else if (game === 'queens') {
         console.log('[API Generator] Generating Queens puzzle server-side...');
         try {
-            const size = difficulty === 'easy' ? 6 : difficulty === 'medium' ? 8 : 9;
-            const puzzle = generateServerQueens(size);
+            const sizeParam = parseInt(req.query.size) || (difficulty === 'easy' ? 6 : difficulty === 'medium' ? 8 : 9);
+            const size = Math.max(6, Math.min(14, sizeParam));
+            const clueLimit = difficulty === 'easy' ? Math.ceil(size * 0.45) : difficulty === 'hard' ? Math.ceil(size * 0.30) : Math.ceil(size * 0.35);
+            let puzzle;
+            for (let attempt = 0; attempt < 25; attempt++) {
+                const candidate = generateServerQueens(size, difficulty);
+                const clueCount = candidate.rows.flat().filter(value => value === 2).length;
+                if (!puzzle || clueCount < puzzle.rows.flat().filter(value => value === 2).length) puzzle = candidate;
+                if (clueCount <= clueLimit) break;
+            }
             console.log(`[API Generator] Queens ${size}x${size} puzzle generated successfully.`);
             return res.status(200).json(puzzle);
         } catch (err) {
@@ -312,17 +320,24 @@ function generateServerTango(size, difficulty, density) {
 }
 
 // --- Server-Side Queens Generator Logic ---
-function generateServerQueens(size) {
+function generateServerQueens(size, difficulty) {
     let board = Array(size).fill(-1);
+    const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+    let randomState = seed || 1;
+    const random = () => {
+        randomState = (1664525 * randomState + 1013904223) >>> 0;
+        return randomState / 0x100000000;
+    };
 
     function solveQueens(row) {
         if (row === size) return true;
-        let cols = Array.from({ length: size }, (_, i) => i).sort(() => Math.random() - 0.5);
+        let cols = Array.from({ length: size }, (_, i) => i).sort(() => random() - 0.5);
         for (let col of cols) {
             let safe = true;
             for (let prevRow = 0; prevRow < row; prevRow++) {
                 let prevCol = board[prevRow];
-                if (prevCol === col || Math.abs(prevRow - row) === Math.abs(prevCol - col)) {
+                const touching = Math.abs(prevRow - row) <= 1 && Math.abs(prevCol - col) <= 1;
+                if (prevCol === col || touching) {
                     safe = false;
                     break;
                 }
@@ -336,13 +351,121 @@ function generateServerQueens(size) {
         return false;
     }
 
-    solveQueens(0);
-    let regions = Array(size * size).fill(0);
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            regions[r * size + c] = (r + c) % Math.min(size, 5);
+    if (!solveQueens(0)) {
+        throw new Error(`Unable to generate a ${size}x${size} Queens placement.`);
+    }
+
+    // Grow one orthogonally connected color region from each crown.
+    const regions = Array(size * size).fill(-1);
+    const frontier = [];
+    for (let row = 0; row < size; row++) {
+        const crownIndex = row * size + board[row];
+        regions[crownIndex] = row;
+        frontier.push({ index: crownIndex, region: row });
+    }
+    while (frontier.length > 0) {
+        const frontierIndex = Math.floor(random() * frontier.length);
+        const current = frontier.splice(frontierIndex, 1)[0];
+        const row = Math.floor(current.index / size);
+        const column = current.index % size;
+        const neighbors = [[row - 1, column], [row + 1, column], [row, column - 1], [row, column + 1]];
+        for (const [neighborRow, neighborColumn] of neighbors) {
+            if (neighborRow < 0 || neighborRow >= size || neighborColumn < 0 || neighborColumn >= size) continue;
+            const neighborIndex = neighborRow * size + neighborColumn;
+            if (regions[neighborIndex] !== -1) continue;
+            regions[neighborIndex] = current.region;
+            frontier.push({ index: neighborIndex, region: current.region });
         }
     }
 
-    return { size, board, regions };
+    const palette = [
+        '#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#bde0fe',
+        '#cdb4db', '#ffc6ff', '#f4a261', '#e9c46a', '#2a9d8f', '#06d6a0',
+        '#f15bb5', '#8338ec'
+    ];
+    const rows = Array.from({ length: size }, () => Array(size).fill(0));
+    const solution = Array.from({ length: size }, () => Array(size).fill(1));
+    for (let row = 0; row < size; row++) {
+        rows[row][board[row]] = 0;
+        solution[row][board[row]] = 2;
+    }
+
+    const units = [];
+    for (let row = 0; row < size; row++) units.push(Array.from({ length: size }, (_, column) => row * size + column));
+    for (let column = 0; column < size; column++) units.push(Array.from({ length: size }, (_, row) => row * size + column));
+    for (let region = 0; region < size; region++) units.push(regions.reduce((cells, value, index) => {
+        if (value === region) cells.push(index);
+        return cells;
+    }, []));
+
+    function solveQueensByDeduction(clues) {
+        const candidates = Array.from({ length: size * size }, (_, index) => new Set([index]));
+        const crowns = new Set();
+
+        function eliminate(index) {
+            const row = Math.floor(index / size);
+            const column = index % size;
+            for (let cell = 0; cell < size * size; cell++) {
+                const cellRow = Math.floor(cell / size);
+                const cellColumn = cell % size;
+                const touching = Math.abs(cellRow - row) <= 1 && Math.abs(cellColumn - column) <= 1;
+                if (cell !== index && (cellRow === row || cellColumn === column || touching || regions[cell] === regions[index])) {
+                    candidates[cell].clear();
+                }
+            }
+            candidates[index] = new Set([index]);
+        }
+
+        for (const clue of clues) {
+            if (crowns.has(clue)) continue;
+            if (candidates[clue].size === 0) return false;
+            crowns.add(clue);
+            eliminate(clue);
+        }
+
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const unit of units) {
+                const possible = unit.filter(index => candidates[index].size > 0 && !crowns.has(index));
+                if (possible.length === 0 && !unit.some(index => crowns.has(index))) return false;
+                if (possible.length === 1) {
+                    const clue = possible[0];
+                    if (!crowns.has(clue)) {
+                        crowns.add(clue);
+                        eliminate(clue);
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        return crowns.size === size && board.every((column, row) => crowns.has(row * size + column));
+    }
+
+    const cluePositions = board.map((column, row) => row * size + column);
+    const clueOrder = [...cluePositions].sort(() => random() - 0.5);
+    const clues = new Set(cluePositions);
+    const targetClues = difficulty === 'easy' ? Math.ceil(size * 0.10) : difficulty === 'hard' ? Math.ceil(size * 0.045) : Math.ceil(size * 0.075);
+    for (const clue of clueOrder) {
+        if (clues.size <= targetClues) break;
+        clues.delete(clue);
+        if (!solveQueensByDeduction([...clues])) clues.add(clue);
+    }
+    if (!solveQueensByDeduction([...clues])) {
+        throw new Error(`Unable to create a deduction-solvable ${size}x${size} Queens puzzle.`);
+    }
+    for (const clue of clues) {
+        rows[Math.floor(clue / size)][clue % size] = 2;
+    }
+
+    return {
+        size,
+        rows,
+        solution,
+        colors: regions.map(region => palette[region % palette.length]),
+        board,
+        regions,
+        seed
+    };
 }

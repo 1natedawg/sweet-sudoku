@@ -73,7 +73,8 @@ async function fetchTangoPuzzle() {
 function initBoardState() {
     const size = puzzleData.size;
     currentState = [];
-    
+    console.log('Initializing board state with size:', size);
+    console.log('Puzzle data:', puzzleData);
     // Map initial rows/board to numeric state (0: empty, 1: sun, 2: moon)
     for (let r = 0; r < size; r++) {
         let row = [];

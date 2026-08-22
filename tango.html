@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tango Game</title>
+    <style>
+        .tango-container { display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin-top: 20px; }
+        .controls { margin-bottom: 15px; }
+        .grid-wrapper { display: grid; gap: 4px; background: #ccc; padding: 4px; position: relative; }
+        .cell { width: 45px; height: 45px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; user-select: none; border: 1px solid #999; }
+        .cell.given { background: #e0e0e0; font-weight: bold; cursor: not-allowed; }
+        .cell.incorrect { color: red; }
+        .connector { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: #555; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="tango-container">
+    <div class="controls">
+        <label>Size: 
+            <select id="sizeSelect">
+                <option value="6">6x6</option>
+                <option value="8">8x8</option>
+                <option value="10">10x10</option>
+                <option value="12">12x12</option>
+                <option value="14">14x14</option>
+            </select>
+        </label>
+        <label>Difficulty: 
+            <select id="diffSelect">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </label>
+        <label>Density (%): <input type="number" id="densityInput" value="30" min="10" max="80" style="width: 50px;"></label>
+        <button id="loadBtn">New Game</button>
+    </div>
+
+    <div id="boardContainer" style="position: relative;"></div>
+    <div id="statusMsg" style="margin-top: 10px; font-weight: bold;"></div>
+</div>
+
+<script>
+let puzzleData = null;
+let currentState = []; // 0: empty, 1: sun, 2: moon
+
+const SYMBOLS = ['', '☀️', '🌙'];
+
+document.getElementById('loadBtn').addEventListener('click', fetchTangoPuzzle);
+
+async function fetchTangoPuzzle() {
+    const size = document.getElementById('sizeSelect').value;
+    const difficulty = document.getElementById('diffSelect').value;
+    const density = document.getElementById('densityInput').value;
+
+    try {
+        const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${density}`);
+        puzzleData = await response.json();
+        
+        if (response.ok) {
+            initBoardState();
+            renderBoard();
+        } else {
+            alert(puzzleData.error || 'Failed to load puzzle.');
+        }
+    } catch (err) {
+        console.error('Error fetching puzzle:', err);
+    }
+}
+
+function initBoardState() {
+    const size = puzzleData.size;
+    currentState = [];
+    
+    // Map initial rows/board to numeric state (0: empty, 1: sun, 2: moon)
+    for (let r = 0; r < size; r++) {
+        let row = [];
+        for (let c = 0; c < size; c++) {
+            let val = puzzleData.rows ? puzzleData.rows[r][c] : (puzzleData.board[r * size + c] === '☀️' ? 1 : puzzleData.board[r * size + c] === '🌙' ? 2 : 0);
+            row.push(val);
+        }
+        currentState.push(row);
+    }
+}
+
+function renderBoard() {
+    const container = document.getElementById('boardContainer');
+    container.innerHTML = '';
+    
+    const size = puzzleData.size;
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${size}, 45px)`;
+    container.style.gridTemplateRows = `repeat(${size}, 45px)`;
+    container.style.gap = '4px';
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const cellDiv = document.createElement('div');
+            cellDiv.classList.add('cell');
+            
+            const val = currentState[r][c];
+            cellDiv.textContent = SYMBOLS[val];
+
+            // Check if cell was a fixed given (assuming givens or checking initial load)
+            // Click handler for looping states: 0 -> 1 -> 2 -> 0
+            cellDiv.addEventListener('click', () => {
+                currentState[r][c] = (currentState[r][c] + 1) % 3;
+                renderBoard();
+                checkWinCondition();
+            });
+
+            container.appendChild(cellDiv);
+        }
+    }
+    
+    renderConnectors();
+    checkWinCondition();
+}
+
+function renderConnectors() {
+    const container = document.getElementById('boardContainer');
+    const size = puzzleData.size;
+    const cellSize = 45;
+    const gap = 4;
+
+    // Render horizontal connectors
+    if (puzzleData.horizontalConnectors) {
+        puzzleData.horizontalConnectors.forEach(conn => {
+            // conn contains {r, c, type} where type: 1 = '×', 2 = '=' (or string equivalent)
+            const el = document.createElement('div');
+            el.classList.add('connector');
+            el.textContent = conn.type === '=' || conn.type === 2 ? '=' : '×';
+            
+            // Calculate pixel position between cell (r, c) and (r, c+1)
+            const left = (conn.c + 1) * cellSize + (conn.c * gap) - 4;
+            const top = conn.r * (cellSize + gap) + (cellSize / 2) - 10;
+            
+            el.style.left = `${left}px`;
+            el.style.top = `${top}px`;
+            container.appendChild(el);
+        });
+    }
+
+    // Render vertical connectors
+    if (puzzleData.verticalConnectors) {
+        puzzleData.verticalConnectors.forEach(conn => {
+            const el = document.createElement('div');
+            el.classList.add('connector');
+            el.textContent = conn.type === '=' || conn.type === 2 ? '=' : '×';
+            
+            const left = conn.c * (cellSize + gap) + (cellSize / 2) - 10;
+            const top = (conn.r + 1) * cellSize + (conn.r * gap) - 4;
+            
+            el.style.left = `${left}px`;
+            el.style.top = `${top}px`;
+            container.appendChild(el);
+        });
+    }
+}
+
+function checkWinCondition() {
+    if (!puzzleData || !puzzleData.solution) return;
+    
+    let size = puzzleData.size;
+    let isComplete = true;
+    let isCorrect = true;
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            let currentVal = currentState[r][c];
+            let solutionVal = puzzleData.solution[r][c] === '☀️' ? 1 : puzzleData.solution[r][c] === '🌙' ? 2 : 0;
+            
+            if (currentVal === 0) isComplete = false;
+            if (currentVal !== solutionVal) isCorrect = false;
+        }
+    }
+
+    const msg = document.getElementById('statusMsg');
+    if (isComplete) {
+        msg.textContent = isCorrect ? "Congratulations! Puzzle Solved!" : "Board is full, but contains errors.";
+        msg.style.color = isCorrect ? "green" : "orange";
+    } else {
+        msg.textContent = "";
+    }
+}
+</script>
+
+</body>
+</html>

@@ -48,6 +48,7 @@ let currentState = []; // 0: empty, 1: sun, 2: moon
 const SYMBOLS = ['', '☀️', '🌙'];
 
 document.getElementById('loadBtn').addEventListener('click', fetchTangoPuzzle);
+fetchTangoPuzzle();
 
 async function fetchTangoPuzzle() {
     const size = document.getElementById('sizeSelect').value;
@@ -56,18 +57,22 @@ async function fetchTangoPuzzle() {
 
     try {
         console.log(`Fetching Tango puzzle: size=${size}, difficulty=${difficulty}, density=${density}`);
+        if (window.location.protocol === 'file:') {
+            throw new Error('Tango must be opened through the site server, not as a file.');
+        }
+
         const response = await fetch(`/api/puzzle?game=tango&size=${size}&difficulty=${difficulty}&density=${density}`, {
             cache: 'no-store'
         });
-        const responseText = await response.text();
-        let responseData = {};
+        if (response.status === 304) {
+            throw new Error('The server returned 304 Not Modified without a puzzle body.');
+        }
 
-        if (responseText) {
-            try {
-                responseData = JSON.parse(responseText);
-            } catch {
-                responseData = { error: 'The server returned an invalid response.' };
-            }
+        let responseData = {};
+        try {
+            responseData = await response.json();
+        } catch {
+            responseData = { error: 'The server returned an invalid JSON response.' };
         }
         
         if (response.ok) {

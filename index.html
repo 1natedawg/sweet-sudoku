@@ -210,8 +210,10 @@
             position: relative;
         }
 
-        .cell:nth-child(3n) { border-right: 2px solid var(--thick-border-color); }
+        .cell:nth-child(3n) { border-right: 3px solid var(--thick-border-color); }
         .cell:nth-child(9n) { border-right: none; }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 3px solid var(--thick-border-color); }
         .cell.given { color: var(--cell-given); font-weight: 700; }
         .cell.user-correct { color: var(--cell-correct); }
         .cell.user-error { color: var(--cell-error); }

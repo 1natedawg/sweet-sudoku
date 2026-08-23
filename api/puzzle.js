@@ -67,6 +67,17 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Failed to generate Queens puzzle.' });
         }
     }
+    else if (game === 'crossword') {
+        console.log('[API Generator] Generating Crossword puzzle server-side...');
+        try {
+            const puzzle = generateCrossword(difficulty);
+            console.log('[API Generator] Crossword puzzle generated successfully.');
+            return res.status(200).json(puzzle);
+        } catch (err) {
+            console.error('[API Generator] Crossword generation error:', err);
+            return res.status(500).json({ error: 'Failed to generate Crossword puzzle.' });
+        }
+    }
 
     return res.status(400).json({ error: 'Invalid game type requested.' });
 }
@@ -471,4 +482,23 @@ function generateServerQueens(size, difficulty, openingHint = true) {
         regions,
         seed
     };
+
+    function generateCrossword(difficulty) {
+        // List all json files in the ./crosswords directory, recursively
+        const fs = require('fs');
+        const path = require('path');
+        const crosswordDir = path.join(process.cwd(), 'crosswords');
+        console.log(`[API Generator] Searching for crossword JSON files in: ${crosswordDir}`);
+        const files = fs.readdirSync(crosswordDir).filter(file => file.endsWith('.json'));
+        if (files.length === 0) {
+            throw new Error('No crossword JSON files found in the crosswords directory.');
+        }
+        // Randomly select a crossword file
+        const randomIndex = Math.floor(Math.random() * files.length);
+        const selectedFile = files[randomIndex];
+        console.log(`[API Generator] Selected crossword file: ${selectedFile}`);
+        const crosswordPath = path.join(crosswordDir, selectedFile);
+        const crosswordData = JSON.parse(fs.readFileSync(crosswordPath, 'utf-8'));
+        return crosswordData;
+    }
 }

@@ -165,7 +165,7 @@
         .tango-row-counters {
             display: grid;
             grid-template-columns: repeat(var(--tango-size), 42px);
-            gap: 1px;
+            gap: 2px;
             grid-column: 2;
             margin: 0;
         }
@@ -178,7 +178,7 @@
 
         .tango-board {
             display: grid;
-            gap: 1px;
+            gap: 2px;
             background-color: var(--thick-border-color);
             border: 2px solid var(--thick-border-color);
             padding: 1px;
@@ -213,6 +213,33 @@
 
         .tango-symbol.moon {
             color: var(--moon-color);
+        }
+
+        .tango-constraint-h.tango-constraint-x,
+        .tango-constraint-v.tango-constraint-x {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-color: #ef4444;
+        }
+
+        .tango-constraint-h.tango-constraint-equal,
+        .tango-constraint-v.tango-constraint-equal {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+            border-color: #3b82f6;
+            border-radius: 4px;
+        }
+
+        [data-theme="dark"] .tango-constraint-x {
+            background-color: #7f1d1d;
+            color: #fecaca;
+            border-color: #f87171;
+        }
+
+        [data-theme="dark"] .tango-constraint-equal {
+            background-color: #1e3a8a;
+            color: #bfdbfe;
+            border-color: #60a5fa;
         }
 
         .tango-cell.error {
@@ -268,7 +295,7 @@
         .tango-counters-col {
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 2px;
         }
 
         .tango-counter {
@@ -290,8 +317,8 @@
             width: 42px;
             height: 42px;
             padding: 0;
-            flex-direction: column;
-            gap: 0;
+            flex-direction: row;
+            gap: 2px;
         }
 
         .counter-balanced {
@@ -356,6 +383,7 @@
             <a href="index.html" class="nav-tab">Sudoku</a>
             <a href="tango.html" class="nav-tab active">Tango</a>
             <a href="queens.html" class="nav-tab">Queens</a>
+            <a href="crossword.html" class="nav-tab">Crossword</a>
         </nav>
 
         <!-- TANGO VIEW -->
@@ -622,7 +650,7 @@
                 counter.className = `tango-counter${vertical ? ' tango-row-counter' : ''}`;
                 const sunClass = suns > targetCount ? 'counter-over' : (suns === targetCount ? 'counter-balanced' : '');
                 const moonClass = moons > targetCount ? 'counter-over' : (moons === targetCount ? 'counter-balanced' : '');
-                counter.innerHTML = `<span class="${sunClass}">${suns}<span class="tango-symbol sun">☀</span></span>${vertical ? '' : '|'}<span class="${moonClass}">${moons}<span class="tango-symbol moon">☾</span></span>`;
+                counter.innerHTML = `<span class="${sunClass}">${suns}</span><span>:</span><span class="${moonClass}">${moons}</span>`;
                 return counter;
             }
 
@@ -642,7 +670,7 @@
                     cell.innerHTML = val === '☀️'
                         ? '<span class="tango-symbol sun">☀</span>'
                         : val === '🌙'
-                            ? '<span class="tango-symbol moon">☾</span>'
+                            ? '<span class="tango-symbol moon">🌙</span>'
                             : '';
                     cell.onclick = () => handleTangoCellClick(idx);
 
@@ -650,7 +678,7 @@
                         const hConstraint = tangoConstraints.horizontal.find(h => h.r === r && h.c === c);
                         if (hConstraint) {
                             const badge = document.createElement('div');
-                            badge.className = 'tango-constraint-h';
+                            badge.className = `tango-constraint-h tango-constraint-${hConstraint.type === 'x' ? 'x' : 'equal'}`;
                             badge.textContent = hConstraint.type;
                             cell.appendChild(badge);
                         }
@@ -660,7 +688,7 @@
                         const vConstraint = tangoConstraints.vertical.find(v => v.r === r && v.c === c);
                         if (vConstraint) {
                             const badge = document.createElement('div');
-                            badge.className = 'tango-constraint-v';
+                            badge.className = `tango-constraint-v tango-constraint-${vConstraint.type === 'x' ? 'x' : 'equal'}`;
                             badge.textContent = vConstraint.type;
                             cell.appendChild(badge);
                         }

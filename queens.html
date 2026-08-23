@@ -54,6 +54,7 @@
         .modal-content { width: 320px; padding: 24px; border-radius: 12px; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
         .modal-content h2 { margin-top: 0; font-size: 1.25rem; }
         .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .setting-item input[type="range"] { width: 110px; }
         .modal-close-btn { width: 100%; margin-top: 8px; padding: 8px; border: 0; border-radius: 6px; background: var(--primary-btn); color: var(--btn-text); font-weight: bold; cursor: pointer; }
         @media (max-width: 560px) {
             body { align-items: flex-start; }
@@ -101,6 +102,7 @@
             <h2>Game Options</h2>
             <div class="setting-item"><label for="toggleQueenAutoX">Automatic X placement</label><input type="checkbox" id="toggleQueenAutoX" checked></div>
             <div class="setting-item"><label for="toggleQueenAutoRemoval">Automatic X removal</label><input type="checkbox" id="toggleQueenAutoRemoval" checked></div>
+            <div class="setting-item"><label for="queenOpeningHintSlider">Opening hint: <span id="queenOpeningHintValue">Off</span></label><input type="range" id="queenOpeningHintSlider" min="0" max="1" step="1" value="0"></div>
             <button class="modal-close-btn" id="queensCloseModalBtn">Save &amp; Close</button>
         </div>
     </div>
@@ -123,6 +125,8 @@
         const queensCloseModalBtn = document.getElementById('queensCloseModalBtn');
         const toggleQueenAutoX = document.getElementById('toggleQueenAutoX');
         const toggleQueenAutoRemoval = document.getElementById('toggleQueenAutoRemoval');
+        const queenOpeningHintSlider = document.getElementById('queenOpeningHintSlider');
+        const queenOpeningHintValue = document.getElementById('queenOpeningHintValue');
         const queensDiffDisplay = document.getElementById('queensDiffDisplay');
         const queensStatus = document.getElementById('queensStatus');
         let queensSize = 6;
@@ -133,13 +137,19 @@
         let queensIsWon = false;
         let queensAutomaticXs = new Set();
         let queensManualXs = new Set();
-        let queensSettings = { automaticXPlacement: true, automaticXRemoval: true };
+        let queensSettings = { automaticXPlacement: true, automaticXRemoval: true, openingHint: false };
         try {
             const savedQueensSettings = JSON.parse(localStorage.getItem('queens_settings') || 'null');
             if (savedQueensSettings) queensSettings = { ...queensSettings, ...savedQueensSettings };
         } catch (error) {}
         toggleQueenAutoX.checked = queensSettings.automaticXPlacement;
         toggleQueenAutoRemoval.checked = queensSettings.automaticXRemoval;
+        queenOpeningHintSlider.value = queensSettings.openingHint ? '1' : '0';
+        queenOpeningHintValue.textContent = queensSettings.openingHint ? 'On' : 'Off';
+
+        queenOpeningHintSlider.addEventListener('input', event => {
+            queenOpeningHintValue.textContent = event.target.value === '1' ? 'On' : 'Off';
+        });
 
         themeToggleBtn.addEventListener('click', () => {
             const newTheme = htmlElement.dataset.theme === 'light' ? 'dark' : 'light';
@@ -157,7 +167,7 @@
             queensIsWon = false;
             queensDiffDisplay.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
             try {
-                const response = await fetch(`/api/puzzle?game=queens&size=${size}&difficulty=${difficulty}`, { cache: 'no-store' });
+                const response = await fetch(`/api/puzzle?game=queens&size=${size}&difficulty=${difficulty}&openingHint=${queensSettings.openingHint}`, { cache: 'no-store' });
                 const data = await response.json();
                 if (response.ok && data.rows && data.solution && data.colors) {
                     queensSize = data.size;
@@ -273,6 +283,7 @@
         queensCloseModalBtn.addEventListener('click', () => {
             queensSettings.automaticXPlacement = toggleQueenAutoX.checked;
             queensSettings.automaticXRemoval = toggleQueenAutoRemoval.checked;
+            queensSettings.openingHint = queenOpeningHintSlider.value === '1';
             localStorage.setItem('queens_settings', JSON.stringify(queensSettings));
             queensOptionsModal.classList.remove('open');
             refreshAutomaticExclusions();

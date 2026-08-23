@@ -49,12 +49,13 @@ export default async function handler(req, res) {
     else if (game === 'queens') {
         console.log('[API Generator] Generating Queens puzzle server-side...');
         try {
+            const openingHint = req.query.openingHint === 'true';
             const sizeParam = parseInt(req.query.size) || (difficulty === 'easy' ? 6 : difficulty === 'medium' ? 8 : 9);
             const size = Math.max(6, Math.min(14, sizeParam));
             const clueLimit = difficulty === 'easy' ? Math.ceil(size * 0.45) : difficulty === 'hard' ? Math.ceil(size * 0.30) : Math.ceil(size * 0.35);
             let puzzle;
             for (let attempt = 0; attempt < 25; attempt++) {
-                const candidate = generateServerQueens(size, difficulty);
+                const candidate = generateServerQueens(size, difficulty, openingHint);
                 const clueCount = candidate.rows.flat().filter(value => value === 2).length;
                 if (!puzzle || clueCount < puzzle.rows.flat().filter(value => value === 2).length) puzzle = candidate;
                 if (clueCount <= clueLimit) break;
@@ -320,7 +321,7 @@ function generateServerTango(size, difficulty, density) {
 }
 
 // --- Server-Side Queens Generator Logic ---
-function generateServerQueens(size, difficulty) {
+function generateServerQueens(size, difficulty, openingHint = true) {
     let board = Array(size).fill(-1);
     const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
     let randomState = seed || 1;
@@ -455,8 +456,10 @@ function generateServerQueens(size, difficulty) {
     if (!solveQueensByDeduction([...clues])) {
         throw new Error(`Unable to create a deduction-solvable ${size}x${size} Queens puzzle.`);
     }
-    for (const clue of clues) {
-        rows[Math.floor(clue / size)][clue % size] = 2;
+    if (openingHint) {
+        for (const clue of clues) {
+            rows[Math.floor(clue / size)][clue % size] = 2;
+        }
     }
 
     return {

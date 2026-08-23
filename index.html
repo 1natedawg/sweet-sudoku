@@ -563,7 +563,7 @@
                 const response = await fetch(`/api/puzzle?game=sudoku&difficulty=${difficulty}`);
                 const data = await response.json();
                 if (response.ok && data.puzzle) {
-                    const flatBoard = data.puzzle.flat();
+                    const flatBoard = data.puzzle.flat().map(val => val ?? 0);
                     boardData = [...flatBoard];
                     givensMask = flatBoard.map(val => val !== 0);
                     solutionData = data.solution ? data.solution.flat() : [...flatBoard];
@@ -574,7 +574,7 @@
                     return;
                 }
             } catch (err) {}
-            loadMockPuzzle();
+            // loadMockPuzzle();
         }
 
         function loadMockPuzzle() {
@@ -651,6 +651,7 @@
         }
 
         function handleCellClick(index) {
+            console.debug(`[Cell Click] Cell index: ${index}, Value: ${boardData[index]}, Given: ${givensMask[index]}`);
             if (isGameWon) return;
             selectCellPath(index);
             if (activeStickyNumber !== null) applyNumberToCell(index, activeStickyNumber);
@@ -734,8 +735,12 @@
 
         function giveSudokuHint() {
             if (isGameWon) return;
-            const emptyIndex = boardData.findIndex((value, index) => value === 0 && !givensMask[index]);
-            if (emptyIndex === -1) return;
+            const emptyIndices = boardData.reduce((indices, value, index) => {
+                if (value === 0 && !givensMask[index]) indices.push(index);
+                return indices;
+            }, []);
+            if (emptyIndices.length === 0) return;
+            const emptyIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
             saveStateSnapshot();
             boardData[emptyIndex] = solutionData[emptyIndex];
             notesData[emptyIndex].clear();
@@ -758,6 +763,10 @@
             if (!saved) return false;
             try {
                 const state = JSON.parse(saved);
+                if (!Array.isArray(state.givensMask) || state.givensMask.length !== 81 || state.givensMask.every(Boolean)) {
+                    localStorage.removeItem('sudoku_active_game');
+                    return false;
+                }
                 boardData = state.boardData;
                 givensMask = state.givensMask;
                 notesData = state.notesData.map(arr => new Set(arr));

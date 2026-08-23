@@ -17,6 +17,8 @@
             --primary-btn-hover: #2563eb;
             --btn-text: #ffffff;
             --cell-error: #dc2626;
+            --sun-color: #d97706;
+            --moon-color: #172554;
         }
 
         [data-theme="dark"] {
@@ -30,6 +32,8 @@
             --primary-btn-hover: #1d4ed8;
             --btn-text: #ffffff;
             --cell-error: #f87171;
+            --sun-color: #fbbf24;
+            --moon-color: #bfdbfe;
         }
 
         body {
@@ -195,6 +199,20 @@
         .tango-cell.given {
             font-weight: bold;
             color: var(--cell-given);
+        }
+
+        .tango-symbol {
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 1.45rem;
+            line-height: 1;
+        }
+
+        .tango-symbol.sun {
+            color: var(--sun-color);
+        }
+
+        .tango-symbol.moon {
+            color: var(--moon-color);
         }
 
         .tango-cell.error {
@@ -604,7 +622,7 @@
                 counter.className = `tango-counter${vertical ? ' tango-row-counter' : ''}`;
                 const sunClass = suns > targetCount ? 'counter-over' : (suns === targetCount ? 'counter-balanced' : '');
                 const moonClass = moons > targetCount ? 'counter-over' : (moons === targetCount ? 'counter-balanced' : '');
-                counter.innerHTML = `<span class="${sunClass}">${suns}☀️</span>${vertical ? '' : '|'}<span class="${moonClass}">${moons}🌙</span>`;
+                counter.innerHTML = `<span class="${sunClass}">${suns}<span class="tango-symbol sun">☀</span></span>${vertical ? '' : '|'}<span class="${moonClass}">${moons}<span class="tango-symbol moon">☾</span></span>`;
                 return counter;
             }
 
@@ -621,7 +639,11 @@
 
                     const cell = document.createElement('div');
                     cell.className = `tango-cell ${tangoGivens[idx] ? 'given' : ''} ${errors[idx] ? 'error' : ''}`;
-                    cell.textContent = val;
+                    cell.innerHTML = val === '☀️'
+                        ? '<span class="tango-symbol sun">☀</span>'
+                        : val === '🌙'
+                            ? '<span class="tango-symbol moon">☾</span>'
+                            : '';
                     cell.onclick = () => handleTangoCellClick(idx);
 
                     if (c < tangoSize - 1) {

@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+        "label": "vercelRun",
+        "command": "sh",
+        "args": ["-c", "set -a; . .env.local; set +a; exec npx vercel dev"],
+        "type": "shell",
+        "isBackground": true,
+        "options": {
+            "cwd": "${workspaceFolder}"
+        },
+        "problemMatcher": {
+            "owner": "vercel",
+            "pattern": {
+                "regexp": "^$"
+            },
+            "background": {
+                "activeOnStart": true,
+                "beginsPattern": "^$",
+                "endsPattern": "^\\s*> Ready! Available at http://localhost:3000"
+            }
+        },
+        "presentation": {
+            "echo": false,
+            "reveal": "always",
+            "revealProblems": "onProblem",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": true
+        }
+    }]
+}

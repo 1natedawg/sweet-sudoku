@@ -310,7 +310,21 @@
             width: 320px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .modal-content h2 { margin-top: 0; font-size: 1.25rem; margin-bottom: 16px; }
+        .modal-dismiss-btn {
+            border: 0;
+            background: none;
+            color: var(--text-color);
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 0 4px 8px;
+        }
         .setting-item {
             display: flex;
             justify-content: space-between;
@@ -406,7 +420,10 @@
     <!-- Options Modal -->
     <div class="modal-overlay" id="optionsModal">
         <div class="modal-content">
-            <h2>Game Options</h2>
+            <div class="modal-header">
+                <h2>Game Options</h2>
+                <button class="modal-dismiss-btn" id="dismissModalBtn" type="button" aria-label="Discard changes and close options">&times;</button>
+            </div>
             <div class="setting-item">
                 <label for="toggleSameNum">Highlight Same Numbers</label>
                 <input type="checkbox" id="toggleSameNum" checked>
@@ -429,6 +446,7 @@
         const hintBtn = document.getElementById('hintBtn');
         const optionsModal = document.getElementById('optionsModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
+        const dismissModalBtn = document.getElementById('dismissModalBtn');
         const toggleSameNum = document.getElementById('toggleSameNum');
         const toggleNoteHighlight = document.getElementById('toggleNoteHighlight');
         const htmlElement = document.documentElement;
@@ -442,13 +460,18 @@
         const savedSettings = localStorage.getItem('sudoku_settings');
         if (savedSettings) {
             try {
-                settings = JSON.parse(savedSettings);
+                settings = { ...settings, ...JSON.parse(savedSettings) };
                 toggleSameNum.checked = settings.highlightSameNum;
                 toggleNoteHighlight.checked = settings.highlightNotes;
             } catch (e) {}
         }
 
         optionsBtn.addEventListener('click', () => optionsModal.classList.add('open'));
+        dismissModalBtn.addEventListener('click', () => {
+            toggleSameNum.checked = settings.highlightSameNum;
+            toggleNoteHighlight.checked = settings.highlightNotes;
+            optionsModal.classList.remove('open');
+        });
         closeModalBtn.addEventListener('click', () => {
             settings.highlightSameNum = toggleSameNum.checked;
             settings.highlightNotes = toggleNoteHighlight.checked;
@@ -677,6 +700,11 @@
             const selectedVal = boardData[index];
 
             for (let i = 0; i < 81; i++) {
+                const noteItems = cells[i].querySelectorAll('.note-item');
+                noteItems.forEach((noteItem, noteIndex) => {
+                    const noteValue = noteIndex + 1;
+                    noteItem.classList.toggle('highlight-note', settings.highlightNotes && selectedVal !== 0 && noteValue === selectedVal);
+                });
                 if (i === index) continue;
                 const r = Math.floor(i / 9), c = i % 9;
                 const br = Math.floor(r / 3), bc = Math.floor(c / 3);

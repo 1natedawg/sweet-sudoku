@@ -52,7 +52,9 @@
         .modal-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .2s; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
         .modal-content { width: 320px; padding: 24px; border-radius: 12px; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; }
         .modal-content h2 { margin-top: 0; font-size: 1.25rem; }
+        .modal-dismiss-btn { border: 0; background: none; color: var(--text-color); font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0 0 4px 8px; }
         .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .setting-item input[type="range"] { width: 110px; }
         .modal-close-btn { width: 100%; margin-top: 8px; padding: 8px; border: 0; border-radius: 6px; background: var(--primary-btn); color: var(--btn-text); font-weight: bold; cursor: pointer; }
@@ -100,7 +102,10 @@
     </div>
     <div class="modal-overlay" id="queensOptionsModal">
         <div class="modal-content">
-            <h2>Game Options</h2>
+            <div class="modal-header">
+                <h2>Game Options</h2>
+                <button class="modal-dismiss-btn" id="queensDismissModalBtn" type="button" aria-label="Discard changes and close options">&times;</button>
+            </div>
             <div class="setting-item"><label for="toggleQueenAutoX">Automatic X placement</label><input type="checkbox" id="toggleQueenAutoX" checked></div>
             <div class="setting-item"><label for="toggleQueenAutoRemoval">Automatic X removal</label><input type="checkbox" id="toggleQueenAutoRemoval" checked></div>
             <div class="setting-item"><label for="queenOpeningHintSlider">Opening hint: <span id="queenOpeningHintValue">Off</span></label><input type="range" id="queenOpeningHintSlider" min="0" max="1" step="1" value="0"></div>
@@ -124,6 +129,7 @@
         const queensOptionsBtn = document.getElementById('queensOptionsBtn');
         const queensOptionsModal = document.getElementById('queensOptionsModal');
         const queensCloseModalBtn = document.getElementById('queensCloseModalBtn');
+        const queensDismissModalBtn = document.getElementById('queensDismissModalBtn');
         const toggleQueenAutoX = document.getElementById('toggleQueenAutoX');
         const toggleQueenAutoRemoval = document.getElementById('toggleQueenAutoRemoval');
         const queenOpeningHintSlider = document.getElementById('queenOpeningHintSlider');
@@ -281,6 +287,13 @@
         }
 
         queensOptionsBtn.addEventListener('click', () => queensOptionsModal.classList.add('open'));
+        queensDismissModalBtn.addEventListener('click', () => {
+            toggleQueenAutoX.checked = queensSettings.automaticXPlacement;
+            toggleQueenAutoRemoval.checked = queensSettings.automaticXRemoval;
+            queenOpeningHintSlider.value = queensSettings.openingHint ? '1' : '0';
+            queenOpeningHintValue.textContent = queensSettings.openingHint ? 'On' : 'Off';
+            queensOptionsModal.classList.remove('open');
+        });
         queensCloseModalBtn.addEventListener('click', () => {
             queensSettings.automaticXPlacement = toggleQueenAutoX.checked;
             queensSettings.automaticXRemoval = toggleQueenAutoRemoval.checked;

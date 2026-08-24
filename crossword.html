@@ -253,7 +253,21 @@
             width: 320px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .modal-content h2 { margin-top: 0; font-size: 1.25rem; margin-bottom: 16px; }
+        .modal-dismiss-btn {
+            border: 0;
+            background: none;
+            color: var(--text-color);
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 0 4px 8px;
+        }
         .setting-item {
             display: flex;
             justify-content: space-between;
@@ -317,7 +331,10 @@
     <!-- Options Modal -->
     <div class="modal-overlay" id="optionsModal">
         <div class="modal-content">
-            <h2>Game Options</h2>
+            <div class="modal-header">
+                <h2>Game Options</h2>
+                <button class="modal-dismiss-btn" id="dismissModalBtn" type="button" aria-label="Discard changes and close options">&times;</button>
+            </div>
             <div class="setting-item">
                 <label for="toggleCrosswordErrors">Highlight Crossword Errors</label>
                 <input type="checkbox" id="toggleCrosswordErrors" checked>
@@ -342,6 +359,7 @@
         const downCluesElement = document.getElementById('downClues');
         const optionsModal = document.getElementById('optionsModal');
         const errorToggle = document.getElementById('toggleCrosswordErrors');
+        const dismissModalBtn = document.getElementById('dismissModalBtn');
         let puzzle;
         let solution = [];
         let entries = [];
@@ -511,6 +529,10 @@
         });
         document.getElementById('crosswordNewGameBtn').addEventListener('click', loadPuzzle);
         document.getElementById('crosswordOptionsBtn').addEventListener('click', () => optionsModal.classList.add('open'));
+        dismissModalBtn.addEventListener('click', () => {
+            errorToggle.checked = settings.highlightErrors;
+            optionsModal.classList.remove('open');
+        });
         document.getElementById('closeModalBtn').addEventListener('click', () => {
             settings.highlightErrors = errorToggle.checked;
             localStorage.setItem('crossword_settings', JSON.stringify(settings));

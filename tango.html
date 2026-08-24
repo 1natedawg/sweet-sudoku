@@ -18,7 +18,7 @@
             --btn-text: #ffffff;
             --cell-error: #dc2626;
             --sun-color: #d97706;
-            --moon-color: #172554;
+            --moon-color: #2563eb;
         }
 
         [data-theme="dark"] {
@@ -33,7 +33,7 @@
             --btn-text: #ffffff;
             --cell-error: #f87171;
             --sun-color: #fbbf24;
-            --moon-color: #bfdbfe;
+            --moon-color: #60a5fa;
         }
 
         body {
@@ -354,7 +354,21 @@
             width: 320px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .modal-content h2 { margin-top: 0; font-size: 1.25rem; margin-bottom: 16px; }
+        .modal-dismiss-btn {
+            border: 0;
+            background: none;
+            color: var(--text-color);
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 0 4px 8px;
+        }
         .setting-item {
             display: flex;
             justify-content: space-between;
@@ -430,7 +444,10 @@
     <!-- Options Modal -->
     <div class="modal-overlay" id="optionsModal">
         <div class="modal-content">
-            <h2>Game Options</h2>
+            <div class="modal-header">
+                <h2>Game Options</h2>
+                <button class="modal-dismiss-btn" id="dismissModalBtn" type="button" aria-label="Discard changes and close options">&times;</button>
+            </div>
             <div class="setting-item">
                 <label for="toggleTangoErrors">Highlight Tango Errors</label>
                 <input type="checkbox" id="toggleTangoErrors" checked>
@@ -451,6 +468,7 @@
         const optionsBtn = document.getElementById('optionsBtn');
         const optionsModal = document.getElementById('optionsModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
+        const dismissModalBtn = document.getElementById('dismissModalBtn');
         const toggleTangoErrors = document.getElementById('toggleTangoErrors');
         const tangoDensitySlider = document.getElementById('tangoDensitySlider');
         const tangoDensityVal = document.getElementById('tangoDensityVal');
@@ -479,6 +497,12 @@
         });
 
         optionsBtn.addEventListener('click', () => optionsModal.classList.add('open'));
+        dismissModalBtn.addEventListener('click', () => {
+            toggleTangoErrors.checked = settings.highlightTangoErrors;
+            tangoDensitySlider.value = settings.tangoDensity;
+            tangoDensityVal.textContent = settings.tangoDensity + '%';
+            optionsModal.classList.remove('open');
+        });
         closeModalBtn.addEventListener('click', () => {
             settings.highlightTangoErrors = toggleTangoErrors.checked;
             settings.tangoDensity = parseInt(tangoDensitySlider.value);
@@ -670,7 +694,7 @@
                     cell.innerHTML = val === '☀️'
                         ? '<span class="tango-symbol sun">☀</span>'
                         : val === '🌙'
-                            ? '<span class="tango-symbol moon">🌙</span>'
+                            ? '<span class="tango-symbol moon">☾</span>'
                             : '';
                     cell.onclick = () => handleTangoCellClick(idx);
 
